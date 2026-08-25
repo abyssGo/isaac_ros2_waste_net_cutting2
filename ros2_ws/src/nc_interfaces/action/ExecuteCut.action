@@ -1,0 +1,9 @@
+std_msgs/Header header
+nc_interfaces/CutTarget[] targets
+---
+bool success
+string message
+---
+int32 current_target
+int32 total_targets
+string current_object_id
