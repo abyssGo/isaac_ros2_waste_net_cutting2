@@ -1,0 +1,9 @@
+model_type: detect
+imgsz: 640
+confidence: 0.40
+iou_threshold: 0.45
+
+classes:
+  0: plastic_bottle
+  1: can
+  2: buoy

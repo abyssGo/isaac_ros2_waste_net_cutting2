@@ -1,0 +1,42 @@
+vision2_node:
+  ros__parameters:
+    use_sim_time: true
+
+    model_path: /home/rokey/netclean_project/models/netclean_yolo11n/weights/best.pt
+    device: "0"
+    model_imgsz: 640
+    confidence: 0.40
+    action_confidence: 0.50
+    iou_threshold: 0.45
+    max_detections: 3
+    expected_classes: [plastic_bottle, can, buoy]
+
+    rgb_topic: /camera2/rgb/image_raw
+    depth_topic: /camera2/depth/image_raw
+    camera_info_topic: /camera2/camera_info
+    camera_frame: camera2_optical_frame
+    station_arrived_topic: /station2/net_arrived
+    remove_action_name: /remove/execute
+    debug_image_topic: /vision2/debug_image
+    completion_topic: /vision2/removal_complete
+    sync_queue_size: 10
+    sync_slop_sec: 0.10
+
+    # Use the full image until final Camera2 ROI pixels are confirmed.
+    use_roi: false
+    roi_x0: 0
+    roi_y0: 0
+    roi_width: 1280
+    roi_height: 720
+
+    # Median Depth from the central 25 percent of each detection box.
+    suction_center_ratio: 0.25
+    minimum_valid_depth_pixels: 20
+    depth_scale: 1.0
+    minimum_depth_m: 0.05
+    maximum_depth_m: 5.0
+
+    # Reinspect only newer frames after a successful Robot2 Action result.
+    reinspect_delay_sec: 0.50
+    detection_retry_period_sec: 0.20
+    empty_confirmation_frames: 5
