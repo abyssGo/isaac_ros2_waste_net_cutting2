@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import os
+import time
 from typing import Dict, List, Sequence, Tuple
 
 import cv2
@@ -20,7 +22,7 @@ from rclpy.qos import (
     ReliabilityPolicy,
 )
 from sensor_msgs.msg import CameraInfo, Image
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, String
 from ultralytics import YOLO
 
 from nc_interfaces.action import ExecuteRemove
@@ -54,6 +56,16 @@ class Vision2Node(Node):
         self.last_goal_stamp = None
         self.minimum_frame_stamp_ns = -1
         self.next_detection_not_before_ns = 0
+        self.debug_detections: List[dict] = []
+        self.debug_phase = "WAITING"
+        self.debug_station = "WAITING"
+        self.debug_message = "Waiting for Station2 net"
+        self.debug_current_task = 0
+        self.debug_total_tasks = 0
+        self.debug_inference_ms: float | None = None
+        self.debug_fps: float | None = None
+        self.debug_recheck_count = 0
+        self.last_popup_image_message: Image | None = None
 
         self.model = self._load_model()
 
@@ -107,6 +119,16 @@ class Vision2Node(Node):
             self.debug_image_topic,
             camera_qos,
         )
+        self.debug_status_publisher = self.create_publisher(
+            String,
+            self.debug_status_topic,
+            event_qos,
+        )
+        self.popup_image_publisher = self.create_publisher(
+            Image,
+            self.popup_image_topic,
+            camera_qos,
+        )
         self.completion_publisher = self.create_publisher(
             Bool,
             self.completion_topic,
@@ -121,6 +143,10 @@ class Vision2Node(Node):
             0.5,
             self._try_send_pending_goal,
         )
+        self.debug_status_timer = self.create_timer(
+            0.5,
+            self._publish_debug_status,
+        )
 
         self.get_logger().info("NetClean Vision2 started")
         self.get_logger().info(
@@ -131,9 +157,13 @@ class Vision2Node(Node):
             "Vision2 sends bbox-center camera XYZ and class_name; "
             "Robot2 owns fixed-joint mapping"
         )
+        self._publish_debug_status()
 
     def _declare_parameters(self) -> None:
-        self.declare_parameter("model_path", "/home/rokey/netclean_project/models/netclean_yolo11n/weights/best.pt")
+        self.declare_parameter(
+            "model_path",
+            "/home/rokey/netclean_project/models/netclean_yolo11n/weights/best.pt",
+        )
         self.declare_parameter("device", "0")
         self.declare_parameter("model_imgsz", 640)
         self.declare_parameter("confidence", 0.40)
@@ -158,6 +188,18 @@ class Vision2Node(Node):
             "debug_image_topic",
             "/vision2/debug_image",
         )
+        self.declare_parameter(
+            "debug_status_topic",
+            "/vision2/debug/status",
+        )
+        self.declare_parameter(
+            "popup_image_topic",
+            "/vision2/debug/source_image",
+        )
+        self.declare_parameter("validation_precision", -1.0)
+        self.declare_parameter("validation_recall", -1.0)
+        self.declare_parameter("validation_map50", -1.0)
+        self.declare_parameter("validation_map50_95", -1.0)
         self.declare_parameter(
             "completion_topic",
             "/vision2/removal_complete",
@@ -200,6 +242,12 @@ class Vision2Node(Node):
         self.station_arrived_topic = str(value("station_arrived_topic"))
         self.remove_action_name = str(value("remove_action_name"))
         self.debug_image_topic = str(value("debug_image_topic"))
+        self.debug_status_topic = str(value("debug_status_topic"))
+        self.popup_image_topic = str(value("popup_image_topic"))
+        self.validation_precision = float(value("validation_precision"))
+        self.validation_recall = float(value("validation_recall"))
+        self.validation_map50 = float(value("validation_map50"))
+        self.validation_map50_95 = float(value("validation_map50_95"))
         self.completion_topic = str(value("completion_topic"))
         self.sync_queue_size = int(value("sync_queue_size"))
         self.sync_slop_sec = float(value("sync_slop_sec"))
@@ -282,6 +330,15 @@ class Vision2Node(Node):
             self.last_goal_stamp = None
             self.minimum_frame_stamp_ns = -1
             self.next_detection_not_before_ns = 0
+            self.debug_detections = []
+            self.debug_recheck_count = 0
+            self._set_debug_state(
+                phase="DETECTING",
+                station="ARRIVED",
+                current_task=0,
+                total_tasks=0,
+                message="Station2 arrived - waiting for synchronized RGB-D frame",
+            )
             self._publish_completion(False)
             self.get_logger().info(
                 "Station2 net arrived; Vision2 is armed"
@@ -293,6 +350,15 @@ class Vision2Node(Node):
             self.empty_frame_count = 0
             self.pending_targets = None
             self.pending_stamp = None
+            self.debug_detections = []
+            self.debug_recheck_count = 0
+            self._set_debug_state(
+                phase="WAITING",
+                station="WAITING",
+                current_task=0,
+                total_tasks=0,
+                message="Waiting for Station2 net",
+            )
 
     def _on_synchronized_images(
         self,
@@ -304,6 +370,10 @@ class Vision2Node(Node):
         if self.processing or self.goal_in_flight or self.frame_locked:
             return
         if self.camera_info is None:
+            self._set_debug_state(
+                phase="DETECTING",
+                message="WARNING - waiting for Camera2 CameraInfo",
+            )
             self.get_logger().warning(
                 "Waiting for Camera2 CameraInfo",
                 throttle_duration_sec=2.0,
@@ -320,9 +390,17 @@ class Vision2Node(Node):
         try:
             self._process_frame(rgb_message, depth_message)
         except (CvBridgeError, ValueError, RuntimeError) as error:
+            self._set_debug_state(
+                phase="ERROR",
+                message=f"ERROR - Vision2 frame rejected: {error}",
+            )
             self.get_logger().error(f"Vision2 frame rejected: {error}")
             self._schedule_detection_retry()
         except Exception as error:  # noqa: BLE001
+            self._set_debug_state(
+                phase="ERROR",
+                message=f"ERROR - unexpected Vision2 failure: {error}",
+            )
             self.get_logger().error(f"Unexpected Vision2 error: {error}")
             self._schedule_detection_retry()
         finally:
@@ -355,6 +433,7 @@ class Vision2Node(Node):
         roi_rgb = rgb_image[y0:y1, x0:x1]
         inference_bgr = cv2.cvtColor(roi_rgb, cv2.COLOR_RGB2BGR)
 
+        inference_started = time.perf_counter()
         results = self.model.predict(
             source=inference_bgr,
             imgsz=self.model_imgsz,
@@ -366,6 +445,19 @@ class Vision2Node(Node):
         )
         if not results:
             raise RuntimeError("YOLO returned no result object")
+        self.debug_inference_ms = (
+            time.perf_counter() - inference_started
+        ) * 1000.0
+        self.debug_fps = (
+            1000.0 / self.debug_inference_ms
+            if self.debug_inference_ms > 0.0
+            else None
+        )
+
+        raw_debug_detections = self._collect_debug_detections(
+            results[0],
+            offset_xy=(x0, y0),
+        )
 
         detections = best_detection_per_class(
             result=results[0],
@@ -375,9 +467,11 @@ class Vision2Node(Node):
             offset_xy=(x0, y0),
         )
 
-        debug_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2BGR)
+        popup_source_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2BGR)
+        self._publish_popup_source(popup_source_image, rgb_message)
+        debug_image = popup_source_image.copy()
         self._draw_roi(debug_image, roi_bounds)
-        targets = self._build_targets(
+        targets, target_details = self._build_targets(
             detections=detections,
             depth_image=depth_image,
             debug_image=debug_image,
@@ -385,11 +479,25 @@ class Vision2Node(Node):
         self._publish_debug(debug_image, rgb_message)
 
         if not detections:
+            self.debug_detections = self._prepare_debug_detections(
+                raw_debug_detections,
+                target_details={},
+            )
             self._handle_empty_detection()
             return
 
         self.empty_frame_count = 0
         if not targets:
+            self.debug_detections = self._prepare_debug_detections(
+                raw_debug_detections,
+                target_details=target_details,
+            )
+            self._set_debug_state(
+                phase="DETECTING" if not self.removal_action_succeeded else "RECHECK",
+                current_task=0,
+                total_tasks=0,
+                message="WARNING - objects detected but center Depth is invalid",
+            )
             self.get_logger().warning(
                 "Objects detected, but no valid center Depth was available",
                 throttle_duration_sec=1.0,
@@ -400,6 +508,16 @@ class Vision2Node(Node):
         self.pending_targets = targets
         self.pending_stamp = rgb_message.header.stamp
         self.frame_locked = True
+        self.debug_detections = self._prepare_debug_detections(
+            raw_debug_detections,
+            target_details=target_details,
+        )
+        self._set_debug_state(
+            phase="TARGETS READY" if not self.debug_recheck_count else "RECHECK",
+            current_task=0,
+            total_tasks=len(targets),
+            message=f"Detected {len(targets)} valid removal target(s) - Action queued",
+        )
         self.get_logger().info(
             f"Cached {len(targets)} Station2 remove targets"
         )
@@ -407,6 +525,12 @@ class Vision2Node(Node):
 
     def _handle_empty_detection(self) -> None:
         if not self.removal_action_succeeded:
+            self._set_debug_state(
+                phase="DETECTING",
+                current_task=0,
+                total_tasks=0,
+                message="WARNING - no valid Station2 Action target detected yet",
+            )
             self.get_logger().warning(
                 "No Station2 objects detected yet",
                 throttle_duration_sec=1.0,
@@ -415,6 +539,15 @@ class Vision2Node(Node):
             return
 
         self.empty_frame_count += 1
+        self._set_debug_state(
+            phase="RECHECK",
+            current_task=0,
+            total_tasks=0,
+            message=(
+                "RECHECK - remaining valid NON-NET targets: 0 - confirmation "
+                f"{self.empty_frame_count}/{self.empty_confirmation_frames}"
+            ),
+        )
         self.get_logger().info(
             "Station2 empty confirmation "
             f"{self.empty_frame_count}/{self.empty_confirmation_frames}"
@@ -425,6 +558,12 @@ class Vision2Node(Node):
 
         self.cycle_finished = True
         self._publish_completion(True)
+        self._set_debug_state(
+            phase="COMPLETE",
+            current_task=0,
+            total_tasks=0,
+            message="RECHECK COMPLETE - valid NON-NET targets: 0 - Station2 complete",
+        )
         self.get_logger().info(
             "Station2 removal complete; no objects remain"
         )
@@ -434,8 +573,9 @@ class Vision2Node(Node):
         detections: Dict[str, Detection],
         depth_image: np.ndarray,
         debug_image: np.ndarray,
-    ) -> List[RemoveTarget]:
+    ) -> Tuple[List[RemoveTarget], Dict[str, dict]]:
         targets: List[RemoveTarget] = []
+        target_details: Dict[str, dict] = {}
         for class_name in self.expected_classes:
             detection = detections.get(class_name)
             if detection is None:
@@ -452,6 +592,10 @@ class Vision2Node(Node):
                 target.position = self._to_point_message(position)
                 target.fixed_joint_path = ""
                 targets.append(target)
+                target_details[class_name] = {
+                    "depth_m": float(depth_m),
+                    "camera_xyz": [float(value) for value in position],
+                }
 
                 self._draw_grasp_sample(
                     debug_image,
@@ -467,7 +611,7 @@ class Vision2Node(Node):
                 self.get_logger().warning(
                     f"{class_name} center target invalid: {error}"
                 )
-        return targets
+        return targets, target_details
 
     def _center_position_from_depth(
         self,
@@ -518,6 +662,10 @@ class Vision2Node(Node):
         if self.goal_in_flight or not self.pending_targets:
             return
         if not self.remove_action_client.server_is_ready():
+            self._set_debug_state(
+                phase="TARGETS READY",
+                message=f"Waiting for Action server {self.remove_action_name}",
+            )
             self.get_logger().warning(
                 f"Targets cached; waiting for Action server "
                 f"{self.remove_action_name}",
@@ -531,6 +679,11 @@ class Vision2Node(Node):
             self._send_remove_goal(targets, stamp)
         except Exception as error:  # noqa: BLE001
             self.cycle_finished = True
+            self._mark_all_action_detections("FAILED")
+            self._set_debug_state(
+                phase="ERROR",
+                message=f"ERROR - ExecuteRemove goal send failed: {error}",
+            )
             self.get_logger().error(f"ExecuteRemove goal send failed: {error}")
             return
 
@@ -549,6 +702,12 @@ class Vision2Node(Node):
 
         self.goal_in_flight = True
         self.last_goal_stamp = stamp
+        self._set_debug_state(
+            phase="ACTION QUEUED",
+            current_task=0,
+            total_tasks=len(targets),
+            message=f"Sending {len(targets)} target(s) to {self.remove_action_name}",
+        )
         self.get_logger().info(
             f"Sending {len(targets)} targets to {self.remove_action_name}"
         )
@@ -568,21 +727,50 @@ class Vision2Node(Node):
         except Exception as error:  # noqa: BLE001
             self.goal_in_flight = False
             self.cycle_finished = True
+            self._mark_all_action_detections("FAILED")
+            self._set_debug_state(
+                phase="ERROR",
+                message=f"ERROR - ExecuteRemove goal call failed: {error}",
+            )
             self.get_logger().error(f"ExecuteRemove goal call failed: {error}")
             return
 
         if not goal_handle.accepted:
             self.goal_in_flight = False
             self.cycle_finished = True
+            self._mark_all_action_detections("REJECTED")
+            self._set_debug_state(
+                phase="ERROR",
+                message="ERROR - Robot2 rejected the ExecuteRemove goal",
+            )
             self.get_logger().error("Robot2 rejected the ExecuteRemove goal")
             return
 
+        self._set_debug_state(
+            phase="ROBOT WORKING",
+            message="ExecuteRemove goal accepted - waiting for feedback",
+        )
         self.get_logger().info("Robot2 accepted the ExecuteRemove goal")
         result_future = goal_handle.get_result_async()
         result_future.add_done_callback(self._on_action_result)
 
     def _on_action_feedback(self, feedback_message: object) -> None:
         feedback = feedback_message.feedback
+        self._mark_action_progress(
+            object_id=str(feedback.current_object_id),
+            current=int(feedback.current_target),
+            total=int(feedback.total_targets),
+            active_state="REMOVING",
+        )
+        self._set_debug_state(
+            phase="ROBOT WORKING",
+            current_task=int(feedback.current_target),
+            total_tasks=int(feedback.total_targets),
+            message=(
+                f"REMOVING OBJECT {feedback.current_target}/"
+                f"{feedback.total_targets} - {feedback.current_object_id}"
+            ),
+        )
         self.get_logger().info(
             "Robot2 removing "
             f"{feedback.current_object_id} "
@@ -595,14 +783,25 @@ class Vision2Node(Node):
             result = future.result().result
         except Exception as error:  # noqa: BLE001
             self.cycle_finished = True
+            self._mark_all_action_detections("FAILED")
+            self._set_debug_state(
+                phase="ERROR",
+                message=f"ERROR - ExecuteRemove result failed: {error}",
+            )
             self.get_logger().error(f"ExecuteRemove result failed: {error}")
             return
 
         if not result.success:
             self.cycle_finished = True
+            self._mark_all_action_detections("FAILED")
+            self._set_debug_state(
+                phase="ERROR",
+                message=f"ERROR - ExecuteRemove failed: {result.message}",
+            )
             self.get_logger().error(f"ExecuteRemove failed: {result.message}")
             return
 
+        self._mark_all_action_detections("COMPLETE")
         self.removal_action_succeeded = True
         self.frame_locked = False
         self.empty_frame_count = 0
@@ -614,10 +813,209 @@ class Vision2Node(Node):
         self.next_detection_not_before_ns = (
             self.get_clock().now().nanoseconds + delay_ns
         )
+        self.debug_recheck_count += 1
+        self._set_debug_state(
+            phase="RECHECK",
+            current_task=self.debug_total_tasks,
+            message=(
+                f"REMOVAL ACTION COMPLETE - {result.message}; "
+                "waiting for a newer Camera2 frame"
+            ),
+        )
         self.get_logger().info(
             f"ExecuteRemove succeeded: {result.message}; "
             "waiting for a newer Camera2 frame"
         )
+
+    def _collect_debug_detections(
+        self,
+        result: object,
+        offset_xy: Tuple[int, int],
+    ) -> List[dict]:
+        """Return the best visible detection per NON-NET class for the popup."""
+        boxes = getattr(result, "boxes", None)
+        if boxes is None or len(boxes) == 0:
+            return []
+
+        xyxy_values = boxes.xyxy.detach().cpu().numpy()
+        confidence_values = boxes.conf.detach().cpu().numpy()
+        class_values = boxes.cls.detach().cpu().numpy()
+        offset_x, offset_y = offset_xy
+        best_by_class: Dict[str, dict] = {}
+
+        for bbox, confidence, class_index in zip(
+            xyxy_values,
+            confidence_values,
+            class_values,
+        ):
+            class_name = str(self.model.names[int(class_index)])
+            if class_name not in self.expected_classes:
+                continue
+            confidence_value = float(confidence)
+            previous = best_by_class.get(class_name)
+            if previous is not None and previous["confidence"] >= confidence_value:
+                continue
+            x1, y1, x2, y2 = [float(value) for value in bbox]
+            best_by_class[class_name] = {
+                "object_id": class_name,
+                "class_name": class_name,
+                "confidence": confidence_value,
+                "bbox": [
+                    int(round(x1 + offset_x)),
+                    int(round(y1 + offset_y)),
+                    int(round(x2 + offset_x)),
+                    int(round(y2 + offset_y)),
+                ],
+                "action_included": False,
+                "action_state": "EXCLUDED",
+                "task_index": 0,
+                "reject_reason": "",
+            }
+
+        return [
+            best_by_class[class_name]
+            for class_name in self.expected_classes
+            if class_name in best_by_class
+        ]
+
+    def _prepare_debug_detections(
+        self,
+        detections: List[dict],
+        target_details: Dict[str, dict],
+    ) -> List[dict]:
+        target_indices = {
+            class_name: index
+            for index, class_name in enumerate(
+                [
+                    name
+                    for name in self.expected_classes
+                    if name in target_details
+                ],
+                start=1,
+            )
+        }
+        prepared: List[dict] = []
+        for detection in detections:
+            item = dict(detection)
+            class_name = item["class_name"]
+            if float(item["confidence"]) < self.action_confidence:
+                item.update(
+                    action_included=False,
+                    action_state="EXCLUDED",
+                    task_index=0,
+                    reject_reason="LOW CONFIDENCE",
+                )
+            elif class_name in target_indices:
+                item.update(
+                    action_included=True,
+                    action_state="QUEUED",
+                    task_index=target_indices[class_name],
+                    reject_reason="",
+                )
+                item.update(target_details[class_name])
+            else:
+                item.update(
+                    action_included=False,
+                    action_state="EXCLUDED",
+                    task_index=0,
+                    reject_reason="INVALID DEPTH",
+                )
+            prepared.append(item)
+        return prepared
+
+    def _mark_action_progress(
+        self,
+        object_id: str,
+        current: int,
+        total: int,
+        active_state: str,
+    ) -> None:
+        for detection in self.debug_detections:
+            if not detection.get("action_included", False):
+                continue
+            task_index = int(detection.get("task_index", 0))
+            if detection.get("object_id") == object_id or task_index == current:
+                detection["action_state"] = active_state
+            elif task_index and task_index < current:
+                detection["action_state"] = "COMPLETE"
+            else:
+                detection["action_state"] = "QUEUED"
+        self.debug_current_task = current
+        self.debug_total_tasks = total
+
+    def _mark_all_action_detections(self, state: str) -> None:
+        for detection in self.debug_detections:
+            if detection.get("action_included", False):
+                detection["action_state"] = state
+
+    def _set_debug_state(
+        self,
+        *,
+        phase: str | None = None,
+        station: str | None = None,
+        current_task: int | None = None,
+        total_tasks: int | None = None,
+        message: str | None = None,
+    ) -> None:
+        if phase is not None:
+            self.debug_phase = phase
+        if station is not None:
+            self.debug_station = station
+        if current_task is not None:
+            self.debug_current_task = current_task
+        if total_tasks is not None:
+            self.debug_total_tasks = total_tasks
+        if message is not None:
+            self.debug_message = message
+        if hasattr(self, "debug_status_publisher"):
+            self._publish_debug_status()
+
+    @staticmethod
+    def _metric_or_none(value: float) -> float | None:
+        return value if value >= 0.0 else None
+
+    def _publish_debug_status(self) -> None:
+        if not hasattr(self, "debug_status_publisher"):
+            return
+        payload = {
+            "phase": self.debug_phase,
+            "scan": (
+                "INITIAL SCAN"
+                if self.debug_recheck_count == 0
+                else f"RECHECK {self.debug_recheck_count}"
+            ),
+            "station": self.debug_station,
+            "action_server": (
+                "READY"
+                if self.remove_action_client.server_is_ready()
+                else "WAITING"
+            ),
+            "current_task": self.debug_current_task,
+            "total_tasks": self.debug_total_tasks,
+            "model_name": os.path.basename(self.model_path),
+            "device": (
+                "CPU" if self.device.lower() == "cpu" else f"CUDA:{self.device}"
+            ),
+            "inference_ms": self.debug_inference_ms,
+            "fps": self.debug_fps,
+            "validation": {
+                "precision": self._metric_or_none(self.validation_precision),
+                "recall": self._metric_or_none(self.validation_recall),
+                "map50": self._metric_or_none(self.validation_map50),
+                "map50_95": self._metric_or_none(self.validation_map50_95),
+            },
+            "detections": self.debug_detections,
+            "message": self.debug_message,
+        }
+        message = String()
+        message.data = json.dumps(
+            payload,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        self.debug_status_publisher.publish(message)
+        if self.last_popup_image_message is not None:
+            self.popup_image_publisher.publish(self.last_popup_image_message)
 
     def _schedule_detection_retry(self) -> None:
         delay_ns = int(self.detection_retry_period_sec * 1_000_000_000)
@@ -692,6 +1090,18 @@ class Vision2Node(Node):
         debug_message.header = source_message.header
         debug_message.header.frame_id = self.camera_frame
         self.debug_publisher.publish(debug_message)
+
+    def _publish_popup_source(
+        self,
+        image: np.ndarray,
+        source_message: Image,
+    ) -> None:
+        """Publish the exact clean frame used to compute popup detections."""
+        popup_message = self.bridge.cv2_to_imgmsg(image, encoding="bgr8")
+        popup_message.header = source_message.header
+        popup_message.header.frame_id = self.camera_frame
+        self.last_popup_image_message = popup_message
+        self.popup_image_publisher.publish(popup_message)
 
 
 def main(args: Sequence[str] | None = None) -> None:

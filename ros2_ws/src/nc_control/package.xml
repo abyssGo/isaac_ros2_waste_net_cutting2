@@ -9,7 +9,6 @@
   <maintainer email="pjy12110@gmail.com">yong</maintainer>
   <license>Apache-2.0</license>
 
-  <buildtool_depend>ament_python</buildtool_depend>
 
   <depend>rclpy</depend>
   <depend>std_msgs</depend>

@@ -18,9 +18,17 @@ vision2_node:
     station_arrived_topic: /station2/net_arrived
     remove_action_name: /remove/execute
     debug_image_topic: /vision2/debug_image
+    debug_status_topic: /vision2/debug/status
+    popup_image_topic: /vision2/debug/source_image
     completion_topic: /station2/complete
     sync_queue_size: 10
     sync_slop_sec: 0.10
+
+    # Offline YOLO validation metrics. Keep -1.0 until measured.
+    validation_precision: -1.0
+    validation_recall: -1.0
+    validation_map50: -1.0
+    validation_map50_95: -1.0
 
     # Use the full image until final Camera2 ROI pixels are confirmed.
     use_roi: false

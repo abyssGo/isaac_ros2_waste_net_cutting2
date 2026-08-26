@@ -1,0 +1,38 @@
+vision1_debug_popup:
+  ros__parameters:
+    # Exact frame used by Vision1 inference; prevents moving-frame box drift.
+    image_topic: "/vision1/debug/source_image"
+    status_topic: "/vision1/debug/status"
+    # Keep the dashboard separate from nc_vision's annotated debug image.
+    output_topic: "/vision1/debug_dashboard"
+    window_name: "NetClean Vision 1 - Cutting Debug"
+    enable_window: true
+    # Fits beside a terminal on a 1920x1080 desktop.
+    window_width: 1280
+    window_height: 720
+    render_fps: 20.0
+    # ROI pixel coordinates [x1, y1, x2, y2]. [0,0,0,0] disables the line.
+    roi: [0, 0, 0, 0]
+    # Fill these using the labelled YOLO validation result. -1 means N/A.
+    validation_precision: -1.0
+    validation_recall: -1.0
+    validation_map50: -1.0
+    validation_map50_95: -1.0
+
+vision2_debug_popup:
+  ros__parameters:
+    # Exact frame used by Vision2 inference; prevents moving-frame box drift.
+    image_topic: "/vision2/debug/source_image"
+    status_topic: "/vision2/debug/status"
+    # Keep the dashboard separate from nc_vision's annotated debug image.
+    output_topic: "/vision2/debug_dashboard"
+    window_name: "NetClean Vision 2 - Removal Debug"
+    enable_window: true
+    window_width: 1280
+    window_height: 720
+    render_fps: 20.0
+    roi: [0, 0, 0, 0]
+    validation_precision: -1.0
+    validation_recall: -1.0
+    validation_map50: -1.0
+    validation_map50_95: -1.0

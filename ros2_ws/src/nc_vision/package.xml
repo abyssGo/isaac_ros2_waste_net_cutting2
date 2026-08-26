@@ -1,13 +1,12 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>nc_vision</name>
-  <version>0.2.0</version>
+  <version>0.3.0</version>
   <description>NetClean YOLO and 3D vision processing package</description>
 
   <maintainer email="pjy12110@gmail.com">yong</maintainer>
   <license>Apache-2.0</license>
 
-  <buildtool_depend>ament_python</buildtool_depend>
 
   <depend>rclpy</depend>
   <depend>std_msgs</depend>

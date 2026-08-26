@@ -1,0 +1,60 @@
+vision2_node:
+  ros__parameters:
+    use_sim_time: true
+
+    model_path: /home/rokey/netclean_project/models/netclean_yolo11n/weights/best.pt
+    device: "0"
+    model_imgsz: 640
+    confidence: 0.40
+    action_confidence: 0.50
+    iou_threshold: 0.45
+    max_detections: 3
+    expected_classes: [plastic_bottle, can, buoy]
+
+    rgb_topic: /camera2/rgb/image_raw
+    depth_topic: /camera2/depth/image_raw
+    camera_info_topic: /camera2/camera_info
+    camera_frame: camera2_optical_frame
+    station_arrived_topic: /station2/net_arrived
+    remove_action_name: /remove/execute
+    debug_image_topic: /vision2/debug_image
+    debug_status_topic: /vision2/debug/status
+    popup_image_topic: /vision2/debug/source_image
+    completion_topic: /station2/complete
+    sync_queue_size: 10
+    sync_slop_sec: 0.10
+
+    # Offline YOLO validation metrics. Keep -1.0 until measured.
+    validation_precision: -1.0
+    validation_recall: -1.0
+    validation_map50: -1.0
+    validation_map50_95: -1.0
+
+    # Use the full image until final Camera2 ROI pixels are confirmed.
+    use_roi: false
+    roi_x0: 0
+    roi_y0: 0
+    roi_width: 1280
+    roi_height: 720
+
+    # Existing bbox-center sampling remains active for can and buoy.
+    suction_center_ratio: 0.25
+    minimum_valid_depth_pixels: 20
+    depth_scale: 1.0
+    minimum_depth_m: 0.05
+    maximum_depth_m: 5.0
+
+    # V2 only: plastic_bottle uses a margin-filtered median-Depth surface.
+    # Remove 20% per edge, require at least 25% valid Depth, choose the
+    # median-surface pixel nearest the inner ROI center, then use a 7x7 patch.
+    depth_guided_class: plastic_bottle
+    depth_guided_margin_ratio: 0.20
+    depth_guided_minimum_valid_ratio: 0.25
+    depth_guided_tolerance_ratio: 0.05
+    depth_guided_minimum_tolerance_m: 0.03
+    depth_guided_patch_radius: 3
+
+    # Reinspect only newer frames after a successful Robot2 Action result.
+    reinspect_delay_sec: 0.50
+    detection_retry_period_sec: 0.20
+    empty_confirmation_frames: 5
