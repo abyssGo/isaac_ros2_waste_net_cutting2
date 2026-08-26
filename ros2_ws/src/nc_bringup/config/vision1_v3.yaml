@@ -1,0 +1,65 @@
+vision1_node:
+  ros__parameters:
+    use_sim_time: true
+
+    # Final trained YOLO11 Detect model on the Vision PC.
+    model_path: /home/rokey/netclean_project/models/netclean_yolo11n/weights/best.pt
+    device: "0"
+    model_imgsz: 640
+    confidence: 0.40
+    action_confidence: 0.50
+    iou_threshold: 0.45
+    max_detections: 3
+    expected_classes: [plastic_bottle, can, buoy]
+    require_all_classes: true
+
+    rgb_topic: /camera1/rgb/image_raw
+    depth_topic: /camera1/depth/image_raw
+    camera_info_topic: /camera1/camera_info
+    camera_frame: camera1_optical_frame
+    station_arrived_topic: /station1/net_arrived
+    cut_action_name: /cut/execute
+    debug_image_topic: /vision1/debug_image
+    debug_status_topic: /vision1/debug/status
+    popup_image_topic: /vision1/debug/source_image
+    sync_queue_size: 10
+    sync_slop_sec: 0.10
+
+    # Offline YOLO validation metrics. Keep -1.0 until measured.
+    validation_precision: -1.0
+    validation_recall: -1.0
+    validation_map50: -1.0
+    validation_map50_95: -1.0
+
+    # Leave disabled until the final Camera1 image fixes exact ROI pixels.
+    use_roi: false
+    roi_x0: 0
+    roi_y0: 0
+    roi_width: 1280
+    roi_height: 720
+
+    # auto: horizontal bbox -> left/right, vertical bbox -> top/bottom.
+    cut_axis: auto
+    cut_margin_ratio: 0.10
+    minimum_cut_margin_px: 8
+    minimum_cut_distance_m: 0.05
+
+    # Fixed Camera1/net geometry: project P1/P2 onto the calibrated net depth.
+    # This avoids reading the wall behind holes in the net as the cut depth.
+    coordinate_mode: camera_plane
+    net_plane_depth_camera_m: 0.59
+
+    # Used only when coordinate_mode is depth.
+    depth_window: 9
+    depth_scale: 1.0
+    minimum_depth_m: 0.05
+    maximum_depth_m: 5.0
+
+    # Stage1 net plane. Used only when coordinate_mode is plane.
+    net_plane_point_world: [-1.0, -2.0, 1.1892]
+    net_plane_normal_world: [0.0, 1.0, 0.0]
+
+    # Must be the ROS optical-frame pose, not only the AG_Camera1 Xform.
+    # The zero quaternion intentionally prevents unsafe plane-mode execution.
+    camera_position_world: [-0.1, -2.0, 1.2]
+    camera_quaternion_world_xyzw: [0.5, 0.5, 0.5, 0.5]

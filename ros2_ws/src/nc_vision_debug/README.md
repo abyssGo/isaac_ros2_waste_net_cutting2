@@ -10,7 +10,9 @@ ROS 2 Jazzy용 Vision 1·Vision 2 디버깅 팝업 패키지입니다.
 - 실시간 추론 시간·FPS·평균 Confidence 표시
 - 검증 데이터셋의 Precision·Recall·mAP 표시
 - GUI가 없는 환경에서도 팝업 대신 완성 영상을 ROS 토픽으로 계속 발행
-- 카메라 영상을 전체 폭으로 표시하고 정보를 오른쪽 반투명 오버레이로 표시
+- 원본 비율을 유지하여 어망 전체를 Crop 없이 표시
+- 흰색·검정·노란색 포스터형 UI와 UI 색상에서 분리된 Cyan/Magenta/Green 박스
+- UI 전용 YOLO 작업 스레드로 영상과 박스를 지속 갱신
 - 실제 값이 없는 MODEL VALIDATION 영역은 숨겨 영상 공간 확보
 - V2 Vision 2 상태정보가 있으면 흰색 `C`(박스 중심)와 초록색 `G`(Action 전달점) 표시
 
@@ -51,8 +53,8 @@ ros2 run nc_vision_debug vision2_debug_popup \
 
 | 팝업 | 영상 입력 | 상태 입력 | 완성 영상 출력 |
 |---|---|---|---|
-| Vision 1 | `/vision1/debug/source_image` | `/vision1/debug/status` | `/vision1/debug_dashboard` |
-| Vision 2 | `/vision2/debug/source_image` | `/vision2/debug/status` | `/vision2/debug_dashboard` |
+| Vision 1 | `/camera1/rgb/image_raw` | `/vision1/debug/status` | `/vision1/debug_dashboard` |
+| Vision 2 | `/camera2/rgb/image_raw` | `/vision2/debug/status` | `/vision2/debug_dashboard` |
 
 `/vision*/debug/status`는 `std_msgs/msg/String` JSON입니다. 기존 비전 노드에
 `examples/vision_node_integration_snippet.py`의 publisher와 payload 생성 부분을
@@ -117,12 +119,17 @@ Action에서 제외했다면 `action_included=false`와 함께 `reject_reason`�
 mAP는 라벨이 있는 검증 데이터셋에서 얻은 오프라인 성능입니다. 실제 값이 아직
 없으면 YAML의 기본값 `-1.0`을 유지하십시오. 팝업에는 `N/A`로 표시됩니다.
 
-## 6. 영상과 Bounding Box 동기화
+## 6. 실시간 UI와 Action 좌표 분리
 
-팝업은 카메라의 계속 변하는 현재 영상이 아니라 비전 노드가 추론에 실제 사용한
-깨끗한 프레임을 `/vision*/debug/source_image`로 받아 표시합니다. 따라서 JSON의
-Bounding Box 좌표와 배경 영상이 같은 검사 시점에 고정됩니다. 이 토픽을 다시
-`/camera*/rgb/image_raw`로 바꾸면 움직이는 장면에서 박스가 밀릴 수 있습니다.
+팝업은 `/camera*/rgb/image_raw`를 20 FPS로 표시하고 팝업 프로세스 안의 UI 전용
+YOLO 작업 스레드가 최신 프레임의 Bounding Box를 갱신합니다. 이 UI 검출 결과는
+ROS Action Goal을 발행하지 않습니다. 실제 로봇 목표는 기존 `vision1/2_node`가
+검사 시점에 고정한 좌표만 사용합니다. 따라서 실시간 화면을 켜도 작업 중 로봇
+목표 좌표가 흔들리지 않습니다.
+
+영상 FPS와 검출 FPS는 다를 수 있습니다. 영상은 20 FPS로 계속 움직이지만 박스는
+YOLO 추론이 완료되는 속도로 갱신됩니다. GPU 부하가 크면 설정의
+`live_detection_enabled`를 `false`로 변경할 수 있습니다.
 
 ## 7. 팝업 미리보기
 

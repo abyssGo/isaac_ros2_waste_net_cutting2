@@ -12,17 +12,18 @@ Color = Tuple[int, int, int]
 
 
 class Palette:
-    BG: Color = (24, 27, 31)
-    PANEL: Color = (34, 38, 44)
-    PANEL_2: Color = (43, 48, 55)
-    BORDER: Color = (75, 82, 91)
-    TEXT: Color = (235, 238, 242)
-    MUTED: Color = (165, 171, 180)
-    BLUE: Color = (255, 100, 40)       # plastic_bottle
-    RED: Color = (40, 40, 255)         # can
-    YELLOW: Color = (0, 220, 255)      # buoy
+    BG: Color = (244, 244, 241)         # warm poster white
+    PANEL: Color = (250, 250, 247)
+    PANEL_2: Color = (225, 240, 252)    # pale yellow
+    BORDER: Color = (25, 25, 25)
+    TEXT: Color = (20, 20, 20)
+    ON_DARK: Color = (248, 248, 245)
+    MUTED: Color = (82, 82, 78)
+    BLUE: Color = (235, 225, 20)        # cyan bbox: plastic_bottle
+    RED: Color = (220, 45, 225)         # magenta bbox: can
+    YELLOW: Color = (70, 220, 75)       # green bbox: buoy
     GREEN: Color = (40, 220, 80)       # action included / success
-    ORANGE: Color = (0, 165, 255)      # current task
+    ORANGE: Color = (45, 190, 245)     # poster yellow / current task
     GREY: Color = (150, 150, 150)      # excluded
     MAGENTA: Color = (255, 40, 220)    # error
     CYAN: Color = (220, 220, 0)        # ROI
@@ -75,7 +76,7 @@ class PopupRenderer:
         self.bottom_h = max(54, int(self.height * 0.075))
         # The camera now owns the complete content width.  Information is drawn
         # as a compact translucent overlay instead of reserving a side panel.
-        self.panel_w = max(350, int(self.width * 0.285))
+        self.panel_w = max(320, int(self.width * 0.26))
         self.video_w = self.width
         self.video_h = self.height - self.top_h - self.bottom_h
         self.roi = list(roi) if roi and len(roi) == 4 else None
@@ -96,10 +97,8 @@ class PopupRenderer:
         canvas = np.full((self.height, self.width, 3), Palette.BG, dtype=np.uint8)
         frame = self._normalize_frame(frame)
         video, transform = self._fit_frame(frame)
-        canvas[
-            self.top_h:self.height - self.bottom_h,
-            0:self.video_w,
-        ] = video
+        x0, y0, _ = transform
+        canvas[y0:y0 + video.shape[0], x0:x0 + video.shape[1]] = video
 
         self._draw_top_bar(canvas, status)
         self._draw_video_border(canvas)
@@ -124,34 +123,27 @@ class PopupRenderer:
 
     def _fit_frame(self, frame: np.ndarray) -> Tuple[np.ndarray, Tuple[int, int, float]]:
         src_h, src_w = frame.shape[:2]
-        # Cover the whole content area.  The previous contain-fit left large
-        # black gutters beside a 16:9 camera image.  The returned transform
-        # includes the center-crop offsets, so detections remain aligned.
-        scale = max(self.video_w / src_w, self.video_h / src_h)
+        # Contain-fit preserves the original camera ratio and guarantees that
+        # the complete 1x1 m net remains visible. No source pixel is cropped.
+        scale = min(self.video_w / src_w, self.video_h / src_h)
         dst_w = max(1, int(round(src_w * scale)))
         dst_h = max(1, int(round(src_h * scale)))
         interpolation = cv2.INTER_AREA if scale < 1.0 else cv2.INTER_LINEAR
         resized = cv2.resize(frame, (dst_w, dst_h), interpolation=interpolation)
-        crop_x = max(0, (dst_w - self.video_w) // 2)
-        crop_y = max(0, (dst_h - self.video_h) // 2)
-        visible = resized[
-            crop_y:crop_y + self.video_h,
-            crop_x:crop_x + self.video_w,
-        ]
-        x0 = -crop_x
-        y0 = self.top_h - crop_y
-        return visible, (x0, y0, scale)
+        x0 = (self.video_w - dst_w) // 2
+        y0 = self.top_h + (self.video_h - dst_h) // 2
+        return resized, (x0, y0, scale)
 
     def _draw_top_bar(self, canvas: np.ndarray, status: Dict[str, Any]) -> None:
         cv2.rectangle(canvas, (0, 0), (self.width - 1, self.top_h - 1), Palette.PANEL, -1)
         cv2.line(canvas, (0, self.top_h - 1), (self.width, self.top_h - 1), Palette.BORDER, 1)
 
-        self._put_text(canvas, self.title, (18, 29), 0.68, Palette.TEXT, 2)
+        self._put_display_text(canvas, self.title, (18, 32), 0.72, Palette.TEXT, 2)
         model = str(status.get("model_name", "best.pt"))
         device = str(status.get("device", "UNKNOWN"))
         self._put_text(
             canvas,
-            f"MODEL {model}   |   DEVICE {device}",
+            f"LIVE UI  /  MODEL {model}  /  DEVICE {device}",
             (18, 56),
             0.48,
             Palette.MUTED,
@@ -268,6 +260,9 @@ class PopupRenderer:
         if "ERROR" in state or "FAILED" in state or "REJECTED" in state:
             status_color = Palette.MAGENTA
             status_text = state
+        elif "LIVE MONITOR" in state:
+            status_color = Palette.ORANGE
+            status_text = "LIVE"
         elif "PROGRESS" in state or "REMOVING" in state or "CUTTING" in state:
             status_color = Palette.ORANGE
             status_text = "IN PROGRESS"
@@ -441,17 +436,16 @@ class PopupRenderer:
         panel_right = self.width - margin
         panel_top = self.top_h + 12
         panel_bottom = self.height - self.bottom_h
-        # Black 84% overlay: strong enough for terminal-side readability while
-        # still retaining scene context underneath it.
+        # Poster-style warm-white overlay with black type and yellow accents.
         overlay = canvas.copy()
         cv2.rectangle(
             overlay,
             (panel_x, panel_top),
             (panel_right, panel_bottom - 12),
-            Palette.BLACK,
+            Palette.PANEL,
             -1,
         )
-        cv2.addWeighted(overlay, 0.84, canvas, 0.16, 0.0, canvas)
+        cv2.addWeighted(overlay, 0.93, canvas, 0.07, 0.0, canvas)
         cv2.rectangle(
             canvas,
             (panel_x, panel_top),
@@ -462,7 +456,14 @@ class PopupRenderer:
 
         x = panel_x + 16
         y = panel_top + 29
-        self._put_text(canvas, "NON-NET DETECTIONS", (x, y), 0.61, Palette.TEXT, 2)
+        self._put_display_text(
+            canvas,
+            "NON-NET / LIVE",
+            (x, y),
+            0.61,
+            Palette.TEXT,
+            2,
+        )
         self._badge(
             canvas,
             str(len(detections)),
@@ -491,7 +492,14 @@ class PopupRenderer:
         y += 7
         cv2.line(canvas, (x, y), (panel_right - 14, y), Palette.BORDER, 1)
         y += 24
-        self._put_text(canvas, "LIVE PERFORMANCE", (x, y), 0.58, Palette.TEXT, 2)
+        self._put_display_text(
+            canvas,
+            "LIVE PERFORMANCE",
+            (x, y),
+            0.56,
+            Palette.TEXT,
+            2,
+        )
         y += 25
 
         confidences = [float(d["confidence"]) for d in detections]
@@ -528,7 +536,14 @@ class PopupRenderer:
             y += 7
             cv2.line(canvas, (x, y), (panel_right - 14, y), Palette.BORDER, 1)
             y += 23
-            self._put_text(canvas, "MODEL VALIDATION", (x, y), 0.52, Palette.TEXT, 2)
+            self._put_display_text(
+                canvas,
+                "MODEL VALIDATION",
+                (x, y),
+                0.50,
+                Palette.TEXT,
+                2,
+            )
             y += 23
             self._put_text(
                 canvas,
@@ -564,6 +579,8 @@ class PopupRenderer:
         included = bool(det.get("action_included", False))
         if any(token in state for token in ("ERROR", "FAILED", "REJECTED")):
             marker, marker_color = "X", Palette.MAGENTA
+        elif "LIVE MONITOR" in state:
+            marker, marker_color = ">", Palette.ORANGE
         elif any(token in state for token in ("PROGRESS", "REMOVING", "CUTTING")):
             marker, marker_color = ">", Palette.ORANGE
         elif "COMPLETE" in state or "DONE" in state:
@@ -593,7 +610,9 @@ class PopupRenderer:
         )
         task_index = _safe_int(det.get("task_index"))
         state_text = state
-        if not included:
+        if "LIVE MONITOR" in state:
+            state_text = "LIVE DETECTION"
+        elif not included:
             reason = str(det.get("reject_reason", ""))
             state_text = f"EXCLUDED - {reason}" if reason else "EXCLUDED"
         elif task_index:
@@ -646,7 +665,7 @@ class PopupRenderer:
 
     def _draw_bottom_bar(self, canvas: np.ndarray, status: Dict[str, Any]) -> None:
         y0 = self.height - self.bottom_h
-        cv2.rectangle(canvas, (0, y0), (self.width - 1, self.height - 1), Palette.PANEL, -1)
+        cv2.rectangle(canvas, (0, y0), (self.width - 1, self.height - 1), Palette.ORANGE, -1)
         cv2.line(canvas, (0, y0), (self.width, y0), Palette.BORDER, 1)
         message = str(status.get("message", "Waiting for vision status"))
         message_upper = message.upper()
@@ -657,7 +676,7 @@ class PopupRenderer:
         elif "COMPLETE" in message_upper or "SUCCESS" in message_upper:
             color = Palette.GREEN
         else:
-            color = Palette.TEXT
+            color = Palette.BLACK
         self._put_text(
             canvas,
             message,
@@ -740,7 +759,7 @@ class PopupRenderer:
             (x + 5, y + th + 3),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.50,
-            Palette.TEXT,
+            Palette.ON_DARK,
             1,
             cv2.LINE_AA,
         )
@@ -775,6 +794,28 @@ class PopupRenderer:
             text,
             origin,
             cv2.FONT_HERSHEY_SIMPLEX,
+            scale,
+            color,
+            thickness,
+            cv2.LINE_AA,
+        )
+
+    def _put_display_text(
+        self,
+        image: np.ndarray,
+        text: str,
+        origin: Tuple[int, int],
+        scale: float,
+        color: Color,
+        thickness: int,
+    ) -> None:
+        """High-contrast display type inspired by the supplied poster."""
+
+        cv2.putText(
+            image,
+            str(text),
+            origin,
+            cv2.FONT_HERSHEY_DUPLEX,
             scale,
             color,
             thickness,

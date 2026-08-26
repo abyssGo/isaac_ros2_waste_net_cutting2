@@ -7,7 +7,7 @@ package_name = "nc_vision_debug"
 
 setup(
     name=package_name,
-    version="0.5.0",
+    version="0.7.0",
     packages=find_packages(exclude=["test"]),
     data_files=[
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
@@ -26,6 +26,8 @@ setup(
         "console_scripts": [
             "vision1_debug_popup = nc_vision_debug.vision1_debug_popup_node:main",
             "vision2_debug_popup = nc_vision_debug.vision2_debug_popup_node:main",
+            "vision1_debug_popup_v3 = nc_vision_debug.vision1_debug_popup_v3_node:main",
+            "vision2_debug_popup_v3 = nc_vision_debug.vision2_debug_popup_v3_node:main",
         ],
     },
 )
