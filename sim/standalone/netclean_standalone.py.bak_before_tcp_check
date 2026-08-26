@@ -134,14 +134,14 @@ PHYSICS_DT = 1.0 / 60.0
 RENDERING_DT = 1.0 / 60.0
 WARMUP_STEPS = 30
 
-NET_SPEED_MPS = 0.36
+NET_SPEED_MPS = 0.20
 NET_CURRENT_POSE_HZ = 20.0
 READY_PUBLISH_HZ = 1.0
 
 ROBOT_JOINT_SPEED_RAD_S = 0.50
 ROBOT_MIN_MOTION_DURATION_SEC = 0.30
-ROBOT_JOINT_TOLERANCE_RAD = math.radians(1.0)
-ROBOT_MOTION_TIMEOUT_SEC = 15.0
+ROBOT_JOINT_TOLERANCE_RAD = math.radians(2.0)
+ROBOT_MOTION_TIMEOUT_SEC = 60.0
 
 SUCTION_TIMEOUT_SEC = 5.0
 
@@ -219,8 +219,8 @@ RUNTIME_SUCTION_JOINT_PATH = "/World/NetCleanRuntime/Robot2SuctionJoint"
 
 NET_TARGET_TOLERANCE_M = 0.005
 
-ROBOT_STIFFNESS = (160.0, 4000.0, 2500.0, 682.2491, 100.0, 11.111)
-ROBOT_DAMPING = (4.5, 42.0, 90.0, 38.206, 3.0, 0.622)
+ROBOT_STIFFNESS = (40.7156, 2000.0, 2500.0, 682.2491, 25.923, 11.111)
+ROBOT_DAMPING = (2.28, 30.0, 90.0, 38.206, 1.452, 0.622)
 ROBOT_MAX_EFFORT = (163.0, 163.0, 96.0, 50.0, 50.0, 50.0)
 APPLY_RUNTIME_GAINS = True
 APPLY_RUNTIME_EFFORT_LIMITS = False
@@ -532,15 +532,6 @@ class RobotMotionController:
                 joint_indices=self._indices,
             )
         )
-
-
-        # Robot2 보간 종료 후 IK 최종 관절값을 정확히 적용한다.
-        # SuctionTCP와 물체 중심 사이에 남는 관절 추종 오차를 제거한다.
-        if ratio >= 1.0 and self._config.name == "robot2":
-            self._robot.set_joint_positions(
-                self._target_joint_positions,
-                joint_indices=self._indices,
-            )
 
         current = np.asarray(
             self._robot.get_joint_positions(joint_indices=self._indices),

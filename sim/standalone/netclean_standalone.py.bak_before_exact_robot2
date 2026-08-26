@@ -134,7 +134,7 @@ PHYSICS_DT = 1.0 / 60.0
 RENDERING_DT = 1.0 / 60.0
 WARMUP_STEPS = 30
 
-NET_SPEED_MPS = 0.36
+NET_SPEED_MPS = 0.20
 NET_CURRENT_POSE_HZ = 20.0
 READY_PUBLISH_HZ = 1.0
 
@@ -532,15 +532,6 @@ class RobotMotionController:
                 joint_indices=self._indices,
             )
         )
-
-
-        # Robot2 보간 종료 후 IK 최종 관절값을 정확히 적용한다.
-        # SuctionTCP와 물체 중심 사이에 남는 관절 추종 오차를 제거한다.
-        if ratio >= 1.0 and self._config.name == "robot2":
-            self._robot.set_joint_positions(
-                self._target_joint_positions,
-                joint_indices=self._indices,
-            )
 
         current = np.asarray(
             self._robot.get_joint_positions(joint_indices=self._indices),
