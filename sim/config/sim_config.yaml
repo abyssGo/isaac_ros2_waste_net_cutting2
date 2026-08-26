@@ -1,0 +1,200 @@
+world:
+  usd_path: /home/rokey/isaac_simulation_intergration/project1/simulation_integration_v3.usd
+  meters_per_unit: 1.0
+  up_axis: Z
+runtime:
+  physics_dt: 0.008333333333333333
+  rendering_dt: 0.03333333333333333
+  warmup_steps: 60
+  reset_stabilize_steps: 240
+  ready_publish_hz: 1.0
+  net_pose_publish_hz: 20.0
+reset:
+  stabilize_steps: 240
+  robot_home_tolerance_deg: 2.0
+  net_position_tolerance_m: 0.02
+  object_position_tolerance_m: 0.02
+  object_orientation_tolerance_deg: 5.0
+  object_linear_speed_tolerance_mps: 0.05
+  object_angular_speed_tolerance_rad_s: 0.1
+prim_paths:
+  physics_scene: /physicsScene
+  robot1: /World/robot1
+  robot2: /World/robot2/m0609
+  robot1_link6: /World/robot1/link_6
+  robot2_link6: /World/robot2/m0609/link_6
+  robot2_base_link: /World/robot2/m0609/base_link
+  robot2_base_fixed_joint: /World/robots_table/FixedJoint_gripper
+  robot1_tcp: /World/robot1/link_6/CutterTCP
+  robot2_tcp: /World/robot2/m0609/link_6/SuctionTCP
+  net_root: /World/collected_net
+  camera1: /World/AG_Camera1/RSD455/Camera_OmniVision_OV9782_Color
+  camera2: /World/AG_Camera2/RSD455/Camera_OmniVision_OV9782_Color
+  clock_graph: /ROSGraphs/Clock
+  camera1_graph: /ROSGraphs/AG_Camera1
+  camera2_graph: /ROSGraphs/AG_Camera2
+rail:
+  spawn_xyz:
+  - -0.7
+  - -5.0
+  - 0.71
+  start_xyz:
+  - -0.7
+  - -4.0
+  - 0.71
+  station1_xyz:
+  - -0.7
+  - -2.0
+  - 0.71
+  station2_xyz:
+  - -0.7
+  - 2.0
+  - 0.71
+  exit_xyz:
+  - -0.7
+  - 4.0
+  - 0.71
+  speed_mps: 0.3
+  position_tolerance_m: 0.02
+  command_xz_tolerance_m: 0.02
+  settle_time_sec: 0.2
+  carriage_prim_paths:
+  - /World/collected_net/World4/net_collected/carriage_TL
+  - /World/collected_net/World4/net_collected/carriage_TR
+  - /World/collected_net/World4/net_collected/carriage_BL
+  - /World/collected_net/World4/net_collected/carriage_BR
+  physical_net_prim_path: /World/collected_net/World4/net_collected/net_green
+m0609:
+  urdf_path: /home/rokey/isaac_simulation_intergration/project1/robot2_sample/m0609_isaac_sim.urdf
+  lula_descriptor_path: /home/rokey/isaac_simulation_intergration/project1/robot2_sample/m0609_description.yaml
+  end_effector_frame: link_6
+  stiffness:
+  - 40.7156
+  - 500.0
+  - 1135.0354
+  - 682.2491
+  - 25.923
+  - 11.111
+  damping:
+  - 2.28
+  - 15.0
+  - 63.562
+  - 38.206
+  - 1.452
+  - 0.622
+  apply_runtime_gains: true
+  max_effort:
+  - 163.0
+  - 163.0
+  - 96.0
+  - 50.0
+  - 50.0
+  - 50.0
+  apply_max_effort_override: false
+  velocity_limit_rad_s:
+  - 0.35
+  - 0.35
+  - 0.4
+  - 0.52
+  - 0.52
+  - 0.52
+  minimum_motion_duration_sec: 0.5
+  maximum_motion_duration_sec: 30.0
+  timeout_scale: 3.0
+  timeout_margin_sec: 3.0
+  joint_tolerance_deg: 2.0
+  home_tolerance_deg: 2.0
+  tcp_position_tolerance_m: 0.012
+  tcp_orientation_tolerance_deg: 8.0
+  motion_settle_time_sec: 0.15
+  max_joint_delta_deg: 200.0
+robot1:
+  safe_home_deg:
+  - -90.0
+  - -90.0
+  - 90.0
+  - 0.0
+  - 0.0
+  - 0.0
+  flange_to_tcp_position_m:
+  - 0.0
+  - 0.0
+  - 0.13
+  flange_to_tcp_quaternion_wxyz:
+  - 1.0
+  - 0.0
+  - 0.0
+  - 0.0
+  cutter_visual_only: true
+  cutter_tip_axis_local:
+  - 0.0
+  - 0.0
+  - 1.0
+  desired_approach_direction_world:
+  - 0.0
+  - -1.0
+  - 0.0
+robot2:
+  safe_home_deg:
+  - -90.0
+  - -90.0
+  - 90.0
+  - 0.0
+  - 0.0
+  - 0.0
+  flange_to_tcp_position_m:
+  - -0.00113215
+  - -4.321e-05
+  - 0.12225925
+  flange_to_tcp_quaternion_wxyz:
+  - 1.0
+  - 0.0
+  - 0.0
+  - 0.0
+suction:
+  mode: runtime_fixed_joint
+  runtime_root_path: /World/NetCleanRuntime
+  max_grip_distance_m: 0.05
+  settle_time_sec: 0.15
+  minimum_forward_projection_m: -0.01
+  reference_prim_path: /World/robot2/m0609/a_/vg10_quick_changer
+  forward_axis_local:
+  - -1.0
+  - 0.0
+  - 0.0
+objects:
+  plastic_bottle:
+    root_prim_path: /World/collected_net/pet_bottle
+    rigid_body_prim_path: auto
+    net_fixed_joint_path: /World/collected_net/pet_bottle/FixedJoint
+  can:
+    root_prim_path: /World/collected_net/can
+    rigid_body_prim_path: auto
+    net_fixed_joint_path: /World/collected_net/can/FixedJoint
+  buoy:
+    root_prim_path: /World/collected_net/buoy
+    rigid_body_prim_path: auto
+    net_fixed_joint_path: /World/collected_net/buoy/FixedJoint
+class_aliases:
+  pet: plastic_bottle
+  bottle: plastic_bottle
+  plastic_bottle: plastic_bottle
+  can: can
+  buoy: buoy
+topics:
+  sim_ready: /sim/ready
+  reset_request: /sim/reset_request
+  reset_done: /sim/reset_done
+  sim_state: /sim/state
+  sim_fault: /sim/fault
+  sim_cycle: /sim/cycle
+  net_target_pose: /net/target_pose
+  net_current_pose: /net/current_pose
+  robot1_motion_command: /robot1/motion_command
+  robot1_motion_done: /robot1/motion_done
+  robot2_motion_command: /robot2/motion_command
+  robot2_motion_done: /robot2/motion_done
+  suction_command: /robot2/suction_command
+  suction_state: /robot2/suction_state
+  release_object: /robot2/release_attached_object
+  joint_release_done: /robot2/joint_release_done

@@ -5,9 +5,9 @@
 ----
 1. 저장된 netclean_world.usd를 GUI로 연다.
 2. World/Physics를 계속 step한다.
-3. /net/target_pose를 받아 실제 net_green + carriage 4개를 함께 보간 이동한다.
+3. /net/target_pose를 받아 NetRoot를 보간 이동한다.
 4. Robot1/2의 world TCP Pose 명령을 Lula IK로 joint 목표로 바꿔 보간한다.
-5. Robot2 suction 명령을 Runtime FixedJoint 방식으로 처리한다.
+5. Robot2 Surface Gripper를 실제로 열고 닫는다.
 6. Robot2가 보낸 class_name을 고정 매핑하여 해당 Fixed Joint를 해제한다.
 7. 외부 ROS 2 노드에 준비/현재 pose/완료 상태를 발행한다.
 8. 한 사이클 종료 후 reset 요청을 받으면 월드를 초기 상태로 복원한다.
@@ -25,7 +25,8 @@ Isaac Sim 설치 폴더에서:
 중요
 ----
 - 이 파일은 Isaac Sim 전용 Python으로 실행해야 한다.
-- 2026-08-26 오전 확인한 실제 USD/Robot/Camera/TCP/Joint 경로를 반영했다.
+- 아래 "사용자가 채울 값"에 있는 TODO를 실제 월드 정보로 바꾸기 전에는
+  안전을 위해 초기화 단계에서 중단한다.
 - 랜덤 스폰, 동적 registry, YOLO, 공정 FSM은 포함하지 않는다.
 - 현재 robot2_node.py에 맞춰 class_name 기반 Joint 해제 방식을 사용한다.
 """
@@ -49,8 +50,12 @@ import numpy as np
 # 사용자 입력: GUI 월드를 만드는 동안 최종적으로 확보해야 하는 정보
 # =============================================================================
 
-# 실제 월드 확인값 반영 완료. Stage validation을 통과해야만 실행된다.
-CONFIG_READY = True
+# 모든 TODO를 채운 뒤 True로 변경한다.
+# False이면 잘못된 예시 경로로 로봇/물리를 움직이지 않고 즉시 종료한다.
+# 현재 실제 USD에는 Isaac Sim Surface Gripper Schema Prim이 확인되지 않았으므로
+# suction 부분을 Runtime FixedJoint 방식으로 교체하기 전까지 False를 유지한다.
+# 나머지 오전 확정값은 아래에 모두 반영했다.
+CONFIG_READY = False
 
 
 # 1) 저장한 최종 USD의 절대 경로
@@ -62,11 +67,20 @@ USD_PATH = "/home/rokey/isaac_simulation_intergration/project1/simulation_integr
 # Stage 창에서 Prim을 우클릭하여 Copy Prim Path로 복사한다.
 #
 # ROBOT*_PRIM_PATH는 M0609의 Articulation Root가 붙은 Prim이어야 한다.
-# NET_ROOT_PRIM_PATH는 ROS에 publish할 logical anchor다.
-# 실제 이동은 NET_PHYSICAL_RIGID_PRIM_PATH(net_green) + carriage follower가 담당한다.
+# NET_ROOT_PRIM_PATH는 어망과 아직 붙어 있는 쓰레기가 함께 이동하는 상위 Prim이다.
+# Physics 중 set_world_pose로 움직여야 하므로 Static Collider로 만들면 안 된다.
+# Rigid Body를 적용했다면 Kinematic Enabled를 켜고, 자식 Fixed Joint의 Body0/Body1가
+# 실제 Net/쓰레기 Rigid Body를 정확히 가리키는지 확인한다.
+# ROBOT2_SURFACE_GRIPPER_PRIM_PATH는 Create > Robots > Surface Gripper로 만든
+# Surface Gripper Schema Prim이다. 흡착 컵의 시각 Mesh 경로가 아니다.
+# 이 Prim의 Attachment Points에는 USD에서 미리 만든 D6 Joint가 연결되어 있어야 한다.
 ROBOT1_PRIM_PATH = "/World/robot1"
 ROBOT2_PRIM_PATH = "/World/robot2/m0609"
 NET_ROOT_PRIM_PATH = "/World/collected_net"
+# 실제 월드에는 Surface Gripper Schema Prim이 확인되지 않았다.
+# 현재 프로젝트는 VG10 시각/물리 모델 + Runtime FixedJoint suction 방식으로 갈 예정이므로
+# 이 값은 다음 suction 교체 패치에서 제거된다.
+ROBOT2_SURFACE_GRIPPER_PRIM_PATH = "/TODO_RUNTIME_SUCTION_NOT_SURFACE_GRIPPER"
 
 
 # 3) USD에 저장해 둔 Camera와 ROS Action Graph Prim 경로
@@ -140,7 +154,7 @@ READY_PUBLISH_HZ = 1.0
 
 ROBOT_JOINT_SPEED_RAD_S = 0.50
 ROBOT_MIN_MOTION_DURATION_SEC = 0.30
-ROBOT_JOINT_TOLERANCE_RAD = math.radians(2.0)
+ROBOT_JOINT_TOLERANCE_RAD = 0.02
 ROBOT_MOTION_TIMEOUT_SEC = 15.0
 
 SUCTION_TIMEOUT_SEC = 5.0
@@ -212,19 +226,6 @@ SAFE_HOME_JOINTS_RAD = (
 ROBOT1_TCP_PRIM_PATH = "/World/robot1/link_6/CutterTCP"
 ROBOT2_TCP_PRIM_PATH = "/World/robot2/m0609/link_6/SuctionTCP"
 
-# Runtime suction은 Surface Gripper Schema를 사용하지 않는다.
-ROBOT2_SUCTION_BODY_PRIM_PATH = "/World/robot2/m0609/link_6"
-RUNTIME_ROOT_PRIM_PATH = "/World/NetCleanRuntime"
-RUNTIME_SUCTION_JOINT_PATH = "/World/NetCleanRuntime/Robot2SuctionJoint"
-
-NET_TARGET_TOLERANCE_M = 0.005
-
-ROBOT_STIFFNESS = (40.7156, 500.0, 1135.0354, 682.2491, 25.923, 11.111)
-ROBOT_DAMPING = (2.28, 15.0, 63.562, 38.206, 1.452, 0.622)
-ROBOT_MAX_EFFORT = (163.0, 163.0, 96.0, 50.0, 50.0, 50.0)
-APPLY_RUNTIME_GAINS = True
-APPLY_RUNTIME_EFFORT_LIMITS = False
-
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="NetClean Isaac Sim standalone")
@@ -261,22 +262,24 @@ simulation_app = SimulationApp(
 import carb
 import omni.usd
 from isaacsim.core.api import World
-from isaacsim.core.prims import SingleArticulation, SingleRigidPrim, SingleXFormPrim
+from isaacsim.core.prims import SingleArticulation, SingleXFormPrim
 from isaacsim.core.utils.extensions import enable_extension
-from isaacsim.core.utils.stage import is_stage_loading, open_stage
+from isaacsim.core.utils.stage import open_stage
 from isaacsim.core.utils.types import ArticulationAction
 from isaacsim.robot_motion.motion_generation import (
     ArticulationKinematicsSolver,
     LulaKinematicsSolver,
 )
-from pxr import Gf, Sdf, Usd, UsdGeom, UsdPhysics
+from pxr import UsdPhysics
 
 
-# ROS 2 Bridge만 명시적으로 활성화한다.
+# ROS 2 Bridge와 Surface Gripper extension을 코드에서 명시적으로 활성화한다.
 enable_extension("isaacsim.ros2.bridge")
+enable_extension("isaacsim.robot.surface_gripper")
 simulation_app.update()
 
 
+import isaacsim.robot.surface_gripper._surface_gripper as surface_gripper
 import rclpy
 from geometry_msgs.msg import Pose, PoseStamped
 from rclpy.node import Node
@@ -386,59 +389,46 @@ class MotionRequest:
     position_world: np.ndarray
     orientation_world_wxyz: np.ndarray
 
-class NetTransportController:
-    """logical Net pose와 실제 net_green/carriage 이동을 분리한다."""
 
-    def __init__(self, logical_root, physical_net, carriages, speed_mps):
-        self._logical_root = logical_root
-        self._physical_net = physical_net
-        self._carriages = list(carriages)
+class NetMotionController:
+    """NetRoot position만 속도 제한 보간하고 시작 orientation은 보존한다."""
+
+    def __init__(self, net_root: SingleXFormPrim, speed_mps: float) -> None:
+        self._net_root = net_root
         self._speed_mps = float(speed_mps)
-        logical_pos, logical_ori = self._logical_root.get_world_pose()
-        logical_pos = np.asarray(logical_pos, dtype=float)
-        self._orientation = np.asarray(logical_ori, dtype=float)
-        physical_pos, physical_ori = self._physical_net.get_world_pose()
-        self._physical_offset = np.asarray(physical_pos, dtype=float) - logical_pos
-        self._physical_orientation = np.asarray(physical_ori, dtype=float)
-        self._carriage_offsets = []
-        self._carriage_orientations = []
-        for carriage in self._carriages:
-            pos, ori = carriage.get_world_pose()
-            self._carriage_offsets.append(np.asarray(pos, dtype=float) - logical_pos)
-            self._carriage_orientations.append(np.asarray(ori, dtype=float))
-        self._current_position = logical_pos.copy()
-        self._target_position = logical_pos.copy()
-        print(f"[NetClean] transport initialized: physical_net_offset={self._physical_offset.round(6).tolist()}, carriages={len(self._carriages)}", flush=True)
+        initial_position, initial_orientation = self._net_root.get_world_pose()
+        self._initial_orientation = np.asarray(initial_orientation, dtype=float)
+        self._target_position = np.asarray(initial_position, dtype=float)
 
-    def set_target(self, position_world):
+    def set_target(self, position_world: Sequence[float]) -> None:
         target = np.asarray(position_world, dtype=float)
         if target.shape != (3,) or not np.all(np.isfinite(target)):
             raise ValueError("Net target position must be three finite values")
-        self._target_position = target.copy()
+        self._target_position = target
 
-    def update(self, dt):
-        delta = self._target_position - self._current_position
+    def update(self, dt: float) -> None:
+        current_position, _ = self._net_root.get_world_pose()
+        current = np.asarray(current_position, dtype=float)
+        delta = self._target_position - current
         distance = float(np.linalg.norm(delta))
-        if distance > 1.0e-9:
-            step_distance = min(distance, self._speed_mps * float(dt))
-            self._current_position += delta * (step_distance / distance)
-        self._apply_pose()
+        if distance < 1.0e-6:
+            return
+        step_distance = min(distance, self._speed_mps * dt)
+        next_position = current + delta * (step_distance / distance)
+        self._net_root.set_world_pose(
+            position=next_position,
+            orientation=self._initial_orientation,
+        )
 
-    def _apply_pose(self):
-        self._physical_net.set_world_pose(position=self._current_position + self._physical_offset, orientation=self._physical_orientation)
-        for carriage, offset, orientation in zip(self._carriages, self._carriage_offsets, self._carriage_orientations):
-            carriage.set_world_pose(position=self._current_position + offset, orientation=orientation)
+    def get_world_pose(self) -> Tuple[np.ndarray, np.ndarray]:
+        return self._net_root.get_world_pose()
 
-    def get_world_pose(self):
-        return self._current_position.copy(), self._orientation.copy()
+    def reset(self) -> None:
+        """World reset 후 현재 초기 pose를 새 목표로 사용한다."""
+        position, orientation = self._net_root.get_world_pose()
+        self._initial_orientation = np.asarray(orientation, dtype=float)
+        self._target_position = np.asarray(position, dtype=float)
 
-    def at_target(self, tolerance_m=NET_TARGET_TOLERANCE_M):
-        return float(np.linalg.norm(self._target_position - self._current_position)) <= float(tolerance_m)
-
-    def reset_to_spawn(self):
-        self._current_position = np.asarray(NET_SPAWN_XYZ, dtype=float)
-        self._target_position = self._current_position.copy()
-        self._apply_pose()
 
 class RobotMotionController:
     """한 로봇의 Pose 명령 queue, Lula IK, joint 보간, 완료 이벤트를 관리한다."""
@@ -609,160 +599,167 @@ class RobotMotionController:
         # 명령 하나당 정확히 한 번만 발행한다.
         self._result_publisher.publish(msg)
 
-class RuntimeSuctionController:
-    """VG10 suction: ON=armed, class release 시 Runtime FixedJoint를 실제 생성한다."""
 
-    def __init__(self, stage, object_body_path_by_class, state_publisher):
-        self._stage = stage
-        self._object_body_paths = dict(object_body_path_by_class)
+class SuctionController:
+    """Surface Gripper 명령을 실행하고 USD runtime status를 확인한다."""
+
+    def __init__(self, gripper_prim_path: str, state_publisher) -> None:
+        self._path = gripper_prim_path
         self._publisher = state_publisher
-        self._requests = deque()
-        self._armed = False
-        self._attached_class = None
+        self._interface = surface_gripper.acquire_surface_gripper_interface()
+        self._requests: Deque[bool] = deque()
+        self._active = False
+        self._expected = False
+        self._start_time = 0.0
 
-    def enqueue(self, enabled):
+    def enqueue(self, enabled: bool) -> None:
         self._requests.append(bool(enabled))
 
-    def is_closed(self):
-        return bool(self._armed)
+    def is_closed(self) -> bool:
+        status = str(self._interface.get_gripper_status(self._path)).lower()
+        return status == "closed"
 
-    def is_open(self):
-        return not self._armed
+    def is_open(self) -> bool:
+        status = str(self._interface.get_gripper_status(self._path)).lower()
+        return status == "open"
 
-    def reset(self):
+    def reset(self) -> None:
+        """대기 명령을 폐기하고 Surface Gripper를 강제로 Open 상태로 만든다."""
         self._requests.clear()
-        self._remove_runtime_joint()
-        self._armed = False
-        self._attached_class = None
+        self._active = False
+        self._expected = False
+        self._start_time = 0.0
+        self._interface.open_gripper(self._path)
 
-    def update(self):
-        if not self._requests:
+    def update(self) -> None:
+        if not self._active:
+            if not self._requests:
+                return
+            self._expected = self._requests.popleft()
+            self._start_time = time.monotonic()
+            self._active = True
+            if self._expected:
+                self._interface.close_gripper(self._path)
+            else:
+                self._interface.open_gripper(self._path)
+
+        status = str(self._interface.get_gripper_status(self._path)).lower()
+        reached = status == ("closed" if self._expected else "open")
+        if reached:
+            self._publish_actual_state()
+            self._active = False
             return
-        enabled = self._requests.popleft()
-        if enabled:
-            self._armed = True
-            self._publish_state(True)
-            carb.log_info("[robot2 suction] armed")
-        else:
-            self._remove_runtime_joint()
-            self._armed = False
-            self._attached_class = None
-            self._publish_state(False)
-            carb.log_info("[robot2 suction] released")
 
-    def attach_class(self, class_name):
-        class_name = class_name.strip().lower()
-        if not self._armed:
-            carb.log_error("[robot2 suction] attach rejected: suction is not armed")
-            return False
-        object_body_path = self._object_body_paths.get(class_name)
-        if object_body_path is None:
-            carb.log_error(f"[robot2 suction] no body mapping for {class_name!r}")
-            return False
-        if self._attached_class is not None:
-            return self._attached_class == class_name
-        if self._stage.GetPrimAtPath(RUNTIME_SUCTION_JOINT_PATH).IsValid():
-            self._stage.RemovePrim(RUNTIME_SUCTION_JOINT_PATH)
-        if not self._stage.GetPrimAtPath(RUNTIME_ROOT_PRIM_PATH).IsValid():
-            self._stage.DefinePrim(RUNTIME_ROOT_PRIM_PATH, "Xform")
-        try:
-            body0_pos, body0_q = _get_stage_world_pose(self._stage, ROBOT2_SUCTION_BODY_PRIM_PATH)
-            body1_pos, body1_q = _get_stage_world_pose(self._stage, object_body_path)
-            rotation0 = _quaternion_to_rotation_matrix_wxyz(body0_q)
-            local_pos0 = rotation0.T @ (body1_pos - body0_pos)
-            local_rot0 = _normalize_quaternion_wxyz(_quaternion_multiply_wxyz(_quaternion_inverse_wxyz(body0_q), body1_q), "runtime suction local rotation")
-            joint = UsdPhysics.FixedJoint.Define(self._stage, RUNTIME_SUCTION_JOINT_PATH)
-            joint.CreateBody0Rel().SetTargets([Sdf.Path(ROBOT2_SUCTION_BODY_PRIM_PATH)])
-            joint.CreateBody1Rel().SetTargets([Sdf.Path(object_body_path)])
-            joint.CreateLocalPos0Attr().Set(Gf.Vec3f(*[float(v) for v in local_pos0]))
-            joint.CreateLocalRot0Attr().Set(Gf.Quatf(float(local_rot0[0]), Gf.Vec3f(float(local_rot0[1]), float(local_rot0[2]), float(local_rot0[3]))))
-            joint.CreateLocalPos1Attr().Set(Gf.Vec3f(0.0, 0.0, 0.0))
-            joint.CreateLocalRot1Attr().Set(Gf.Quatf(1.0, Gf.Vec3f(0.0, 0.0, 0.0)))
-            joint.CreateJointEnabledAttr().Set(True)
-        except Exception as exc:
-            carb.log_error(f"[robot2 suction] runtime FixedJoint creation failed: {exc}")
-            if self._stage.GetPrimAtPath(RUNTIME_SUCTION_JOINT_PATH).IsValid():
-                self._stage.RemovePrim(RUNTIME_SUCTION_JOINT_PATH)
-            return False
-        self._attached_class = class_name
-        carb.log_info(f"[robot2 suction] attached class={class_name}, body={object_body_path}")
-        return True
+        if time.monotonic() - self._start_time > SUCTION_TIMEOUT_SEC:
+            carb.log_error(
+                f"[robot2 suction] timeout; expected={self._expected}, status={status}"
+            )
+            # Bool 프로토콜에는 별도 success 필드가 없으므로 확인된 실제 상태를 보낸다.
+            # robot2_node는 기대값과 다르면 계속 기다리다가 자체 timeout으로 실패 처리한다.
+            self._publish_actual_state()
+            self._active = False
 
-    def detach_runtime_joint(self):
-        self._remove_runtime_joint()
-        self._attached_class = None
-
-    def _remove_runtime_joint(self):
-        if self._stage.GetPrimAtPath(RUNTIME_SUCTION_JOINT_PATH).IsValid():
-            self._stage.RemovePrim(RUNTIME_SUCTION_JOINT_PATH)
-
-    def _publish_state(self, value):
-        msg = Bool(); msg.data = bool(value); self._publisher.publish(msg)
+    def _publish_actual_state(self) -> None:
+        msg = Bool()
+        msg.data = self.is_closed()
+        self._publisher.publish(msg)
 
 
 class FixedJointReleaseController:
-    """class_name의 Net FixedJoint를 끊고 Runtime suction joint로 ownership을 넘긴다."""
+    """class_name을 allowlist Joint 경로로 바꾸고 Fixed Joint를 해제한다."""
 
-    def __init__(self, stage, joint_path_by_class, suction_controller, result_publisher):
+    def __init__(
+        self,
+        stage,
+        joint_path_by_class: Dict[str, str],
+        suction_controller: SuctionController,
+        result_publisher,
+    ) -> None:
         self._stage = stage
         self._paths = dict(joint_path_by_class)
         self._suction = suction_controller
         self._publisher = result_publisher
-        self._requests = deque()
+        self._requests: Deque[str] = deque()
 
-    def enqueue(self, class_name):
+    def enqueue(self, class_name: str) -> None:
         self._requests.append(class_name.strip().lower())
 
-    def reset(self):
+    def reset(self) -> None:
+        """대기 중 해제 요청을 폐기하고 모든 쓰레기 Fixed Joint를 재활성화한다."""
         self._requests.clear()
         failures = []
         for class_name, joint_path in self._paths.items():
             prim = self._stage.GetPrimAtPath(joint_path)
             if not prim.IsValid() or not prim.IsA(UsdPhysics.FixedJoint):
-                failures.append(f"{class_name}: {joint_path}"); continue
+                failures.append(f"{class_name}: {joint_path}")
+                continue
             joint_schema = UsdPhysics.Joint(prim)
             enabled_attr = joint_schema.GetJointEnabledAttr()
-            if not enabled_attr.IsValid(): enabled_attr = joint_schema.CreateJointEnabledAttr(True)
+            if not enabled_attr.IsValid():
+                enabled_attr = joint_schema.CreateJointEnabledAttr(True)
             enabled_attr.Set(True)
-            if enabled_attr.Get() is not True: failures.append(f"{class_name}: {joint_path}")
-        if failures: raise RuntimeError("Failed to restore Fixed Joints: " + ", ".join(failures))
+            if enabled_attr.Get() is not True:
+                failures.append(f"{class_name}: {joint_path}")
 
-    def all_enabled(self):
+        if failures:
+            raise RuntimeError(
+                "Failed to restore Fixed Joints: " + ", ".join(failures)
+            )
+
+    def all_enabled(self) -> bool:
         for joint_path in self._paths.values():
             prim = self._stage.GetPrimAtPath(joint_path)
-            if not prim.IsValid() or not prim.IsA(UsdPhysics.FixedJoint): return False
+            if not prim.IsValid() or not prim.IsA(UsdPhysics.FixedJoint):
+                return False
             enabled_attr = UsdPhysics.Joint(prim).GetJointEnabledAttr()
-            if not enabled_attr.IsValid() or enabled_attr.Get() is not True: return False
+            if not enabled_attr.IsValid() or enabled_attr.Get() is not True:
+                return False
         return True
 
-    def update(self):
-        if not self._requests: return
+    def update(self) -> None:
+        if not self._requests:
+            return
         class_name = self._requests.popleft()
         success = self._release(class_name)
-        msg = Bool(); msg.data = bool(success); self._publisher.publish(msg)
+        msg = Bool()
+        msg.data = success
+        # 요청 하나당 정확히 한 번만 발행한다.
+        self._publisher.publish(msg)
 
-    def _release(self, class_name):
+    def _release(self, class_name: str) -> bool:
         joint_path = self._paths.get(class_name)
         if joint_path is None:
-            carb.log_error(f"[joint release] unknown class_name={class_name!r}"); return False
+            carb.log_error(f"[joint release] unknown class_name={class_name!r}")
+            return False
         if not self._suction.is_closed():
-            carb.log_error("[joint release] rejected because suction is not armed"); return False
+            carb.log_error("[joint release] rejected because suction is not Closed")
+            return False
+
         prim = self._stage.GetPrimAtPath(joint_path)
-        if not prim.IsValid() or not prim.IsA(UsdPhysics.FixedJoint):
-            carb.log_error(f"[joint release] invalid FixedJoint: {joint_path}"); return False
-        if not self._suction.attach_class(class_name): return False
+        if not prim.IsValid():
+            carb.log_error(f"[joint release] missing Prim: {joint_path}")
+            return False
+        if not prim.IsA(UsdPhysics.FixedJoint):
+            carb.log_error(f"[joint release] Prim is not Physics FixedJoint: {joint_path}")
+            return False
+
         joint_schema = UsdPhysics.Joint(prim)
         enabled_attr = joint_schema.GetJointEnabledAttr()
-        if not enabled_attr.IsValid(): enabled_attr = joint_schema.CreateJointEnabledAttr(True)
-        if enabled_attr.Get() is False: return True
+        if not enabled_attr.IsValid():
+            enabled_attr = joint_schema.CreateJointEnabledAttr(True)
+
+        if enabled_attr.Get() is False:
+            carb.log_warn(f"[joint release] already disabled: {joint_path}")
+            return True
+
         enabled_attr.Set(False)
         success = enabled_attr.Get() is False
-        if not success:
-            self._suction.detach_runtime_joint()
+        if success:
+            carb.log_info(f"[joint release] disabled: {joint_path}")
+        else:
             carb.log_error(f"[joint release] verification failed: {joint_path}")
-            return False
-        carb.log_info(f"[joint release] disabled after suction attach: {joint_path}")
-        return True
+        return success
+
 
 class SimRosInterface(Node):
     """ROS callback에서는 명령을 queue에만 저장하고 USD/PhysX는 건드리지 않는다."""
@@ -926,193 +923,322 @@ class SimRosInterface(Node):
         msg.data = bool(value)
         publisher.publish(msg)
 
-def _get_stage_world_pose(stage, prim_path):
-    prim = stage.GetPrimAtPath(prim_path)
-    if not prim.IsValid(): raise RuntimeError(f"Missing Prim for world pose: {prim_path}")
-    matrix = UsdGeom.XformCache(Usd.TimeCode.Default()).GetLocalToWorldTransform(prim)
-    translation = matrix.ExtractTranslation()
-    quat = matrix.ExtractRotationQuat(); imag = quat.GetImaginary()
-    position = np.array([float(translation[0]), float(translation[1]), float(translation[2])], dtype=float)
-    orientation = _normalize_quaternion_wxyz([float(quat.GetReal()), float(imag[0]), float(imag[1]), float(imag[2])], f"{prim_path} world orientation")
-    return position, orientation
 
-
-def _prepare_transport_stage(stage):
-    net_prim = stage.GetPrimAtPath(NET_PHYSICAL_RIGID_PRIM_PATH)
-    if not net_prim.IsValid(): raise RuntimeError(f"Missing physical net Prim: {NET_PHYSICAL_RIGID_PRIM_PATH}")
-    rigid_api = UsdPhysics.RigidBodyAPI(net_prim) if net_prim.HasAPI(UsdPhysics.RigidBodyAPI) else UsdPhysics.RigidBodyAPI.Apply(net_prim)
-    attr = rigid_api.GetKinematicEnabledAttr()
-    if not attr.IsValid(): attr = rigid_api.CreateKinematicEnabledAttr(True)
-    attr.Set(True)
-    print(f"[NetClean] physical net KINEMATIC: {NET_PHYSICAL_RIGID_PRIM_PATH}", flush=True)
-    for carriage_path in CARRIAGE_PRIM_PATHS:
-        root = stage.GetPrimAtPath(carriage_path)
-        if not root.IsValid(): raise RuntimeError(f"Missing carriage Prim: {carriage_path}")
-        collision_off = joint_off = 0
-        for prim in Usd.PrimRange(root):
-            if prim.HasAPI(UsdPhysics.CollisionAPI):
-                api = UsdPhysics.CollisionAPI(prim); a = api.GetCollisionEnabledAttr()
-                if not a.IsValid(): a = api.CreateCollisionEnabledAttr(True)
-                a.Set(False); collision_off += 1
-            if prim.IsA(UsdPhysics.FixedJoint):
-                joint = UsdPhysics.Joint(prim); a = joint.GetJointEnabledAttr()
-                if not a.IsValid(): a = joint.CreateJointEnabledAttr(True)
-                a.Set(False); joint_off += 1
-        print(f"[NetClean] carriage visual follower: {carriage_path} (collision_off={collision_off}, joint_off={joint_off})", flush=True)
-
-
-def _object_body_paths_from_joint_map(stage, mapping):
-    result = {}
-    for class_name, joint_path in mapping.items():
-        prim = stage.GetPrimAtPath(joint_path)
-        if not prim.IsValid() or not prim.IsA(UsdPhysics.FixedJoint): raise RuntimeError(f"{class_name}: invalid FixedJoint {joint_path}")
-        targets = UsdPhysics.Joint(prim).GetBody1Rel().GetTargets()
-        if len(targets) != 1: raise RuntimeError(f"{class_name}: body1 target count={len(targets)} at {joint_path}")
-        body_path = str(targets[0])
-        if not stage.GetPrimAtPath(body_path).IsValid(): raise RuntimeError(f"{class_name}: missing body1 {body_path}")
-        result[class_name] = body_path
-    return result
-
-
-class TrackedRigidObjects:
-    def __init__(self, wrappers):
-        self._wrappers = dict(wrappers); self._initial = {}
-        for name, wrapper in self._wrappers.items():
-            p, q = wrapper.get_world_pose(); self._initial[name] = (np.asarray(p, dtype=float).copy(), np.asarray(q, dtype=float).copy())
-    def restore(self):
-        for name, wrapper in self._wrappers.items():
-            p, q = self._initial[name]; wrapper.set_world_pose(position=p, orientation=q)
-            try:
-                wrapper.set_linear_velocity(np.zeros(3)); wrapper.set_angular_velocity(np.zeros(3))
-            except Exception: pass
-
-
-def _apply_robot_drive_settings(robot, name):
-    if not APPLY_RUNTIME_GAINS: return
-    controller = robot.get_articulation_controller()
-    controller.set_gains(kps=np.asarray(ROBOT_STIFFNESS, dtype=float), kds=np.asarray(ROBOT_DAMPING, dtype=float), save_to_usd=False)
-    if APPLY_RUNTIME_EFFORT_LIMITS and hasattr(controller, "set_max_efforts"):
-        controller.set_max_efforts(np.asarray(ROBOT_MAX_EFFORT, dtype=float))
-    actual_kps, actual_kds = controller.get_gains()
-    print(f"[NetClean DRIVE] {name} KP={np.asarray(actual_kps).round(4).tolist()} KD={np.asarray(actual_kds).round(4).tolist()}", flush=True)
-
-
-def _validate_static_config(usd_path):
+def _validate_static_config(usd_path: str) -> None:
     errors = []
-    if not CONFIG_READY: errors.append("CONFIG_READY is False")
-    for name, path in {"USD_PATH/--usd": usd_path, "M0609_URDF_PATH": M0609_URDF_PATH, "M0609_LULA_DESCRIPTOR_PATH": M0609_LULA_DESCRIPTOR_PATH}.items():
-        if _is_todo(path): errors.append(f"{name} still contains TODO")
-        elif not os.path.isfile(path): errors.append(f"{name} does not exist: {path}")
-    required = [ROBOT1_PRIM_PATH, ROBOT2_PRIM_PATH, NET_ROOT_PRIM_PATH, NET_PHYSICAL_RIGID_PRIM_PATH, ROBOT1_TCP_PRIM_PATH, ROBOT2_TCP_PRIM_PATH, ROBOT2_SUCTION_BODY_PRIM_PATH, CAMERA1_PRIM_PATH, CAMERA2_PRIM_PATH, ROS_CLOCK_GRAPH_PRIM_PATH, CAMERA1_GRAPH_PRIM_PATH, CAMERA2_GRAPH_PRIM_PATH, *CARRIAGE_PRIM_PATHS, *JOINT_PATH_BY_CLASS.values()]
-    for path in required:
-        if _is_todo(path) or not path.startswith('/'): errors.append(f"Incomplete Prim path: {path}")
-    if errors: raise RuntimeError("Standalone configuration is incomplete:\n  - " + "\n  - ".join(errors))
+    if not CONFIG_READY:
+        errors.append("CONFIG_READY is False")
+
+    required_files = {
+        "USD_PATH/--usd": usd_path,
+        "M0609_URDF_PATH": M0609_URDF_PATH,
+        "M0609_LULA_DESCRIPTOR_PATH": M0609_LULA_DESCRIPTOR_PATH,
+    }
+    for name, path in required_files.items():
+        if _is_todo(path):
+            errors.append(f"{name} still contains TODO")
+        elif not os.path.isfile(path):
+            errors.append(f"{name} does not exist: {path}")
+
+    required_strings = {
+        "M0609_END_EFFECTOR_FRAME": M0609_END_EFFECTOR_FRAME,
+    }
+    for name, value in required_strings.items():
+        if _is_todo(value):
+            errors.append(f"{name} still contains TODO")
+
+    required_prim_paths = {
+        "ROBOT1_PRIM_PATH": ROBOT1_PRIM_PATH,
+        "ROBOT2_PRIM_PATH": ROBOT2_PRIM_PATH,
+        "NET_ROOT_PRIM_PATH": NET_ROOT_PRIM_PATH,
+        "ROBOT2_SURFACE_GRIPPER_PRIM_PATH": ROBOT2_SURFACE_GRIPPER_PRIM_PATH,
+        "CAMERA1_PRIM_PATH": CAMERA1_PRIM_PATH,
+        "CAMERA2_PRIM_PATH": CAMERA2_PRIM_PATH,
+        "ROS_CLOCK_GRAPH_PRIM_PATH": ROS_CLOCK_GRAPH_PRIM_PATH,
+        "CAMERA1_GRAPH_PRIM_PATH": CAMERA1_GRAPH_PRIM_PATH,
+        "CAMERA2_GRAPH_PRIM_PATH": CAMERA2_GRAPH_PRIM_PATH,
+        **{f"JOINT_PATH_BY_CLASS[{key!r}]": value for key, value in JOINT_PATH_BY_CLASS.items()},
+    }
+    for name, path in required_prim_paths.items():
+        if _is_todo(path) or not path.startswith("/"):
+            errors.append(f"{name} is not a completed absolute Prim path: {path}")
+
+    if PHYSICS_DT <= 0.0 or RENDERING_DT <= 0.0:
+        errors.append("PHYSICS_DT and RENDERING_DT must be positive")
+    if NET_SPEED_MPS <= 0.0 or ROBOT_JOINT_SPEED_RAD_S <= 0.0:
+        errors.append("Net/robot speeds must be positive")
+
+    if errors:
+        joined = "\n  - ".join(errors)
+        raise RuntimeError(f"Standalone configuration is incomplete:\n  - {joined}")
 
 
-def _validate_stage(stage):
-    required = [ROBOT1_PRIM_PATH, ROBOT2_PRIM_PATH, NET_ROOT_PRIM_PATH, NET_PHYSICAL_RIGID_PRIM_PATH, ROBOT1_TCP_PRIM_PATH, ROBOT2_TCP_PRIM_PATH, ROBOT2_SUCTION_BODY_PRIM_PATH, CAMERA1_PRIM_PATH, CAMERA2_PRIM_PATH, ROS_CLOCK_GRAPH_PRIM_PATH, CAMERA1_GRAPH_PRIM_PATH, CAMERA2_GRAPH_PRIM_PATH, *CARRIAGE_PRIM_PATHS, *JOINT_PATH_BY_CLASS.values()]
-    missing = [p for p in required if not stage.GetPrimAtPath(p).IsValid()]
-    if missing: raise RuntimeError("Missing required Stage Prims:\n  - " + "\n  - ".join(missing))
-    if not any(prim.IsA(UsdPhysics.Scene) for prim in stage.Traverse()): raise RuntimeError("No Physics Scene exists")
+def _validate_stage(stage) -> None:
+    required = {
+        "Robot1 articulation": ROBOT1_PRIM_PATH,
+        "Robot2 articulation": ROBOT2_PRIM_PATH,
+        "NetRoot": NET_ROOT_PRIM_PATH,
+        "Robot2 Surface Gripper": ROBOT2_SURFACE_GRIPPER_PRIM_PATH,
+        "Camera1": CAMERA1_PRIM_PATH,
+        "Camera2": CAMERA2_PRIM_PATH,
+        "ROS clock graph": ROS_CLOCK_GRAPH_PRIM_PATH,
+        "Camera1 graph": CAMERA1_GRAPH_PRIM_PATH,
+        "Camera2 graph": CAMERA2_GRAPH_PRIM_PATH,
+        **{f"{key} Fixed Joint": path for key, path in JOINT_PATH_BY_CLASS.items()},
+    }
+    missing = [f"{name}: {path}" for name, path in required.items() if not stage.GetPrimAtPath(path).IsValid()]
+    if missing:
+        raise RuntimeError("Missing required Stage Prims:\n  - " + "\n  - ".join(missing))
+
+    physics_scenes = [prim for prim in stage.Traverse() if prim.IsA(UsdPhysics.Scene)]
+    if not physics_scenes:
+        raise RuntimeError("No Physics Scene exists in the loaded USD")
+
     for class_name, path in JOINT_PATH_BY_CLASS.items():
-        if not stage.GetPrimAtPath(path).IsA(UsdPhysics.FixedJoint): raise RuntimeError(f"{class_name}: not FixedJoint: {path}")
+        if not stage.GetPrimAtPath(path).IsA(UsdPhysics.FixedJoint):
+            raise RuntimeError(
+                f"JOINT_PATH_BY_CLASS[{class_name!r}] is not a Physics FixedJoint: {path}"
+            )
 
 
-def _publish_net_pose(ros, controller):
-    position, orientation_wxyz = controller.get_world_pose(); msg = Pose()
-    msg.position.x, msg.position.y, msg.position.z = map(float, position)
-    msg.orientation.x = float(orientation_wxyz[1]); msg.orientation.y = float(orientation_wxyz[2]); msg.orientation.z = float(orientation_wxyz[3]); msg.orientation.w = float(orientation_wxyz[0])
+def _publish_net_pose(ros: SimRosInterface, controller: NetMotionController) -> None:
+    position, orientation_wxyz = controller.get_world_pose()
+    msg = Pose()
+    msg.position.x = float(position[0])
+    msg.position.y = float(position[1])
+    msg.position.z = float(position[2])
+    msg.orientation.x = float(orientation_wxyz[1])
+    msg.orientation.y = float(orientation_wxyz[2])
+    msg.orientation.z = float(orientation_wxyz[3])
+    msg.orientation.w = float(orientation_wxyz[0])
     ros.net_current_pose_pub.publish(msg)
 
 
-def _move_net_blocking(world, controller, target_xyz, timeout_sec=30.0):
-    controller.set_target(target_xyz)
-    for _ in range(max(1, int(math.ceil(timeout_sec / PHYSICS_DT)))):
-        controller.update(PHYSICS_DT); world.step(render=not ARGS.headless)
-        if controller.at_target(): controller.update(0.0); return
-    raise RuntimeError(f"Net transport timeout to {list(target_xyz)}")
-
-
-def _perform_cycle_reset(world, ros, net_controller, robot1_controller, robot2_controller, suction_controller, joint_controller, tracked_objects, robot1, robot2):
+def _perform_cycle_reset(
+    world: World,
+    ros: SimRosInterface,
+    net_controller: NetMotionController,
+    robot1_controller: RobotMotionController,
+    robot2_controller: RobotMotionController,
+    suction_controller: SuctionController,
+    joint_controller: FixedJointReleaseController,
+) -> None:
+    """한 공정의 런타임 상태를 USD에 저장된 최초 상태로 되돌린다."""
     carb.log_info("[NetClean] cycle reset started")
-    ros.clear_command_queues(); robot1_controller.reset(); robot2_controller.reset(); suction_controller.reset(); joint_controller.reset()
-    world.reset(); _apply_robot_drive_settings(robot1, "robot1"); _apply_robot_drive_settings(robot2, "robot2")
-    net_controller.reset_to_spawn(); tracked_objects.restore(); robot1_controller.reset(); robot2_controller.reset(); suction_controller.reset(); joint_controller.reset()
-    for _ in range(WARMUP_STEPS): net_controller.update(0.0); world.step(render=not ARGS.headless)
-    _move_net_blocking(world, net_controller, NET_WAIT_XYZ)
-    if not suction_controller.is_open(): raise RuntimeError("Runtime suction did not open during reset")
-    if not joint_controller.all_enabled(): raise RuntimeError("Object FixedJoint reset failed")
-    carb.log_info("[NetClean] cycle reset completed at WAIT")
+
+    # 이전 사이클 명령이 reset 직후 실행되지 않도록 가장 먼저 비운다.
+    ros.clear_command_queues()
+    robot1_controller.reset()
+    robot2_controller.reset()
+    suction_controller.reset()
+    joint_controller.reset()
+
+    # World.reset은 로봇 관절, NetRoot와 물리 객체를 최초/default 상태로 복귀시킨다.
+    world.reset()
+
+    # World reset 뒤 runtime handle과 목표값을 다시 초기 상태에 맞춘다.
+    net_controller.reset()
+    robot1_controller.reset()
+    robot2_controller.reset()
+    suction_controller.reset()
+    joint_controller.reset()
+
+    # Surface Gripper Manager와 PhysX constraint가 안정화될 때까지 step한다.
+    max_reset_steps = max(
+        WARMUP_STEPS,
+        int(math.ceil(SUCTION_TIMEOUT_SEC / PHYSICS_DT)),
+    )
+    for step_index in range(max_reset_steps):
+        world.step(render=not ARGS.headless)
+        if step_index + 1 >= WARMUP_STEPS and suction_controller.is_open():
+            break
+
+    if not suction_controller.is_open():
+        raise RuntimeError("Surface Gripper did not return to Open during reset")
+    if not joint_controller.all_enabled():
+        raise RuntimeError("One or more object Fixed Joints are disabled after reset")
+
+    carb.log_info("[NetClean] cycle reset completed")
 
 
-def main():
-    world = None; ros = None; shutting_down = False
-    def _request_shutdown(_signum=None, _frame=None):
-        nonlocal shutting_down; shutting_down = True
-    signal.signal(signal.SIGINT, _request_shutdown); signal.signal(signal.SIGTERM, _request_shutdown)
+def main() -> int:
+    world: Optional[World] = None
+    ros: Optional[SimRosInterface] = None
+    shutting_down = False
+
+    def _request_shutdown(_signum=None, _frame=None) -> None:
+        nonlocal shutting_down
+        shutting_down = True
+
+    signal.signal(signal.SIGINT, _request_shutdown)
+    signal.signal(signal.SIGTERM, _request_shutdown)
+
     try:
         _validate_static_config(ARGS.usd)
+
         carb.log_info(f"[NetClean] opening USD: {ARGS.usd}")
-        if not open_stage(ARGS.usd): raise RuntimeError(f"Failed to open USD: {ARGS.usd}")
-        loading_updates = 0
-        while is_stage_loading():
-            simulation_app.update(); loading_updates += 1
-            if loading_updates > 1800: raise RuntimeError("USD stage loading timeout")
-        simulation_app.update(); print(f"[NetClean] stage loading completed (updates={loading_updates})", flush=True)
-        stage = omni.usd.get_context().get_stage(); _validate_stage(stage); _prepare_transport_stage(stage)
-        object_body_paths = _object_body_paths_from_joint_map(stage, JOINT_PATH_BY_CLASS)
-        world = World(physics_dt=PHYSICS_DT, rendering_dt=RENDERING_DT, stage_units_in_meters=1.0)
-        robot1 = world.scene.add(SingleArticulation(prim_path=ROBOT1_PRIM_PATH, name="robot1_m0609"))
-        robot2 = world.scene.add(SingleArticulation(prim_path=ROBOT2_PRIM_PATH, name="robot2_m0609"))
-        logical_net_root = world.scene.add(SingleXFormPrim(prim_path=NET_ROOT_PRIM_PATH, name="net_logical_root"))
-        physical_net = world.scene.add(SingleXFormPrim(prim_path=NET_PHYSICAL_RIGID_PRIM_PATH, name="net_physical_green"))
-        carriage_wrappers = [world.scene.add(SingleXFormPrim(prim_path=p, name=f"net_carriage_{i}")) for i,p in enumerate(CARRIAGE_PRIM_PATHS)]
-        object_wrappers = {name: world.scene.add(SingleRigidPrim(prim_path=path, name=f"trash_{i}_{name}")) for i,(name,path) in enumerate(object_body_paths.items())}
-        world.reset(); _apply_robot_drive_settings(robot1, "robot1"); _apply_robot_drive_settings(robot2, "robot2")
-        for _ in range(WARMUP_STEPS): world.step(render=not ARGS.headless)
-        tracked_objects = TrackedRigidObjects(object_wrappers)
-        net_controller = NetTransportController(logical_net_root, physical_net, carriage_wrappers, NET_SPEED_MPS); net_controller.reset_to_spawn()
-        rclpy.init(args=None); ros = SimRosInterface()
-        robot1_config = RobotConfig(name="robot1", prim_path=ROBOT1_PRIM_PATH, urdf_path=M0609_URDF_PATH, descriptor_path=M0609_LULA_DESCRIPTOR_PATH, end_effector_frame=M0609_END_EFFECTOR_FRAME, flange_to_tcp_position=ROBOT1_FLANGE_TO_TCP_POSITION, flange_to_tcp_orientation_wxyz=ROBOT1_FLANGE_TO_TCP_QUATERNION_WXYZ, motion_done_topic=ROBOT1_MOTION_DONE_TOPIC)
-        robot2_config = RobotConfig(name="robot2", prim_path=ROBOT2_PRIM_PATH, urdf_path=M0609_URDF_PATH, descriptor_path=M0609_LULA_DESCRIPTOR_PATH, end_effector_frame=M0609_END_EFFECTOR_FRAME, flange_to_tcp_position=ROBOT2_FLANGE_TO_TCP_POSITION, flange_to_tcp_orientation_wxyz=ROBOT2_FLANGE_TO_TCP_QUATERNION_WXYZ, motion_done_topic=ROBOT2_MOTION_DONE_TOPIC)
-        robot1_controller = RobotMotionController(robot1, robot1_config, ros.robot1_motion_done_pub); robot2_controller = RobotMotionController(robot2, robot2_config, ros.robot2_motion_done_pub)
-        suction_controller = RuntimeSuctionController(stage, object_body_paths, ros.robot2_suction_state_pub)
-        joint_controller = FixedJointReleaseController(stage, JOINT_PATH_BY_CLASS, suction_controller, ros.robot2_joint_release_done_pub)
-        suction_controller.reset(); joint_controller.reset(); tracked_objects.restore()
-        for _ in range(WARMUP_STEPS): net_controller.update(0.0); world.step(render=not ARGS.headless)
-        _move_net_blocking(world, net_controller, NET_WAIT_XYZ)
-        ready_period = 1.0 / READY_PUBLISH_HZ; pose_period = 1.0 / NET_CURRENT_POSE_HZ; last_ready_publish = -math.inf; last_pose_publish = -math.inf; simulated_time = 0.0; sim_ready = True
-        print("[NetClean] standalone READY at WAIT; waiting for ROS commands", flush=True)
+        if not open_stage(ARGS.usd):
+            raise RuntimeError(f"Failed to open USD: {ARGS.usd}")
+        simulation_app.update()
+
+        stage = omni.usd.get_context().get_stage()
+        _validate_stage(stage)
+
+        world = World(
+            physics_dt=PHYSICS_DT,
+            rendering_dt=RENDERING_DT,
+            stage_units_in_meters=1.0,
+        )
+
+        robot1 = world.scene.add(
+            SingleArticulation(prim_path=ROBOT1_PRIM_PATH, name="robot1_m0609")
+        )
+        robot2 = world.scene.add(
+            SingleArticulation(prim_path=ROBOT2_PRIM_PATH, name="robot2_m0609")
+        )
+        net_root = world.scene.add(
+            SingleXFormPrim(prim_path=NET_ROOT_PRIM_PATH, name="net_root")
+        )
+
+        world.reset()
+        for _ in range(WARMUP_STEPS):
+            world.step(render=not ARGS.headless)
+
+        rclpy.init(args=None)
+        ros = SimRosInterface()
+
+        robot1_config = RobotConfig(
+            name="robot1",
+            prim_path=ROBOT1_PRIM_PATH,
+            urdf_path=M0609_URDF_PATH,
+            descriptor_path=M0609_LULA_DESCRIPTOR_PATH,
+            end_effector_frame=M0609_END_EFFECTOR_FRAME,
+            flange_to_tcp_position=ROBOT1_FLANGE_TO_TCP_POSITION,
+            flange_to_tcp_orientation_wxyz=ROBOT1_FLANGE_TO_TCP_QUATERNION_WXYZ,
+            motion_done_topic=ROBOT1_MOTION_DONE_TOPIC,
+        )
+        robot2_config = RobotConfig(
+            name="robot2",
+            prim_path=ROBOT2_PRIM_PATH,
+            urdf_path=M0609_URDF_PATH,
+            descriptor_path=M0609_LULA_DESCRIPTOR_PATH,
+            end_effector_frame=M0609_END_EFFECTOR_FRAME,
+            flange_to_tcp_position=ROBOT2_FLANGE_TO_TCP_POSITION,
+            flange_to_tcp_orientation_wxyz=ROBOT2_FLANGE_TO_TCP_QUATERNION_WXYZ,
+            motion_done_topic=ROBOT2_MOTION_DONE_TOPIC,
+        )
+
+        net_controller = NetMotionController(net_root, NET_SPEED_MPS)
+        robot1_controller = RobotMotionController(
+            robot1,
+            robot1_config,
+            ros.robot1_motion_done_pub,
+        )
+        robot2_controller = RobotMotionController(
+            robot2,
+            robot2_config,
+            ros.robot2_motion_done_pub,
+        )
+        suction_controller = SuctionController(
+            ROBOT2_SURFACE_GRIPPER_PRIM_PATH,
+            ros.robot2_suction_state_pub,
+        )
+        joint_controller = FixedJointReleaseController(
+            stage,
+            JOINT_PATH_BY_CLASS,
+            suction_controller,
+            ros.robot2_joint_release_done_pub,
+        )
+
+        ready_period = 1.0 / READY_PUBLISH_HZ
+        pose_period = 1.0 / NET_CURRENT_POSE_HZ
+        last_ready_publish = -math.inf
+        last_pose_publish = -math.inf
+        simulated_time = 0.0
+        sim_ready = True
+
+        carb.log_info("[NetClean] standalone READY; waiting for ROS commands")
+
         while simulation_app.is_running() and not shutting_down:
-            world.step(render=not ARGS.headless); simulated_time += PHYSICS_DT; rclpy.spin_once(ros, timeout_sec=0.0)
+            world.step(render=not ARGS.headless)
+            simulated_time += PHYSICS_DT
+
+            # callback 안에서는 queue에만 적재한다.
+            rclpy.spin_once(ros, timeout_sec=0.0)
+
+            # EXIT 도착 후 control_node가 보낸 reset 요청을 최우선으로 처리한다.
             if ros.reset_requests:
-                sim_ready = False; ros._publish_bool_once(ros.sim_ready_pub, False)
+                sim_ready = False
+                ros._publish_bool_once(ros.sim_ready_pub, False)
                 try:
-                    _perform_cycle_reset(world, ros, net_controller, robot1_controller, robot2_controller, suction_controller, joint_controller, tracked_objects, robot1, robot2)
+                    _perform_cycle_reset(
+                        world,
+                        ros,
+                        net_controller,
+                        robot1_controller,
+                        robot2_controller,
+                        suction_controller,
+                        joint_controller,
+                    )
                 except Exception as exc:
-                    carb.log_error(f"[NetClean] cycle reset failed: {exc}"); ros._publish_bool_once(ros.sim_reset_done_pub, False)
+                    carb.log_error(f"[NetClean] cycle reset failed: {exc}")
+                    ros._publish_bool_once(ros.sim_reset_done_pub, False)
                 else:
-                    sim_ready = True; ros._publish_bool_once(ros.sim_reset_done_pub, True); _publish_net_pose(ros, net_controller); last_ready_publish = -math.inf; last_pose_publish = simulated_time
+                    sim_ready = True
+                    ros._publish_bool_once(ros.sim_reset_done_pub, True)
+                    _publish_net_pose(ros, net_controller)
+                    last_ready_publish = -math.inf
+                    last_pose_publish = simulated_time
                 continue
-            while ros.net_targets: net_controller.set_target(ros.net_targets.popleft())
-            while ros.robot1_requests: robot1_controller.enqueue(ros.robot1_requests.popleft())
-            while ros.robot2_requests: robot2_controller.enqueue(ros.robot2_requests.popleft())
-            while ros.suction_requests: suction_controller.enqueue(ros.suction_requests.popleft())
-            while ros.release_requests: joint_controller.enqueue(ros.release_requests.popleft())
-            net_controller.update(PHYSICS_DT); robot1_controller.update(PHYSICS_DT); robot2_controller.update(PHYSICS_DT); suction_controller.update(); joint_controller.update()
-            if simulated_time - last_pose_publish >= pose_period: _publish_net_pose(ros, net_controller); last_pose_publish = simulated_time
-            if simulated_time - last_ready_publish >= ready_period: ros._publish_bool_once(ros.sim_ready_pub, sim_ready); last_ready_publish = simulated_time
+
+            # queue를 실제 simulation controller로 넘긴다.
+            while ros.net_targets:
+                net_controller.set_target(ros.net_targets.popleft())
+            while ros.robot1_requests:
+                robot1_controller.enqueue(ros.robot1_requests.popleft())
+            while ros.robot2_requests:
+                robot2_controller.enqueue(ros.robot2_requests.popleft())
+            while ros.suction_requests:
+                suction_controller.enqueue(ros.suction_requests.popleft())
+            while ros.release_requests:
+                joint_controller.enqueue(ros.release_requests.popleft())
+
+            net_controller.update(PHYSICS_DT)
+            robot1_controller.update(PHYSICS_DT)
+            robot2_controller.update(PHYSICS_DT)
+            suction_controller.update()
+            joint_controller.update()
+
+            if simulated_time - last_pose_publish >= pose_period:
+                _publish_net_pose(ros, net_controller)
+                last_pose_publish = simulated_time
+
+            # 현재 control_node는 volatile QoS이므로 late join도 받을 수 있게 반복 발행한다.
+            if simulated_time - last_ready_publish >= ready_period:
+                ros._publish_bool_once(ros.sim_ready_pub, sim_ready)
+                last_ready_publish = simulated_time
+
         return 0
+
     except Exception as exc:
-        carb.log_error(f"[NetClean] fatal error: {exc}"); return 1
+        carb.log_error(f"[NetClean] fatal error: {exc}")
+        return 1
+
     finally:
         if ros is not None:
-            try: ros._publish_bool_once(ros.sim_ready_pub, False); ros.destroy_node()
-            except Exception: pass
-        if rclpy.ok(): rclpy.shutdown()
+            try:
+                ros._publish_bool_once(ros.sim_ready_pub, False)
+                ros.destroy_node()
+            except Exception:
+                pass
+        if rclpy.ok():
+            rclpy.shutdown()
         if world is not None:
-            try: world.stop(); world.clear_instance()
-            except Exception: pass
+            try:
+                world.stop()
+                world.clear_instance()
+            except Exception:
+                pass
         simulation_app.close()
 
 

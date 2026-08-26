@@ -1,2 +1,36 @@
-# NetClean ROS 2 parameters
-# 실제 월드 좌표 및 튜닝값이 확정되면 추가한다.
+control_node:
+  ros__parameters:
+    use_sim_time: true
+
+    station1_x: -0.7
+    station1_y: -2.0
+    station1_z: 0.71
+
+    station2_x: -0.7
+    station2_y: 2.0
+    station2_z: 0.71
+
+    exit_x: -0.7
+    exit_y: 4.0
+    exit_z: 0.71
+
+    position_tolerance: 0.02
+    expected_net_speed_mps: 0.30
+
+    repeat_enabled: true
+    max_cycles: 0
+
+    minimum_net_timeout_sec: 20.0
+    net_timeout_scale: 2.5
+    net_timeout_margin_sec: 8.0
+    station1_work_timeout_sec: 180.0
+    station2_work_timeout_sec: 240.0
+    reset_timeout_sec: 45.0
+
+robot1_node:
+  ros__parameters:
+    use_sim_time: true
+
+robot2_node:
+  ros__parameters:
+    use_sim_time: true
