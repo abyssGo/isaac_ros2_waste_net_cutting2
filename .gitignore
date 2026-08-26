@@ -47,3 +47,4 @@ wandb/
 # ============================================================
 *.autosave
 *.bak
+models/netclean_yolo11n/weights/last.pt
