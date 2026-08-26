@@ -141,7 +141,7 @@ READY_PUBLISH_HZ = 1.0
 ROBOT_JOINT_SPEED_RAD_S = 0.50
 ROBOT_MIN_MOTION_DURATION_SEC = 0.30
 ROBOT_JOINT_TOLERANCE_RAD = math.radians(2.0)
-ROBOT_MOTION_TIMEOUT_SEC = 15.0
+ROBOT_MOTION_TIMEOUT_SEC = 60.0
 
 SUCTION_TIMEOUT_SEC = 5.0
 
@@ -280,6 +280,12 @@ simulation_app.update()
 import rclpy
 from geometry_msgs.msg import Pose, PoseStamped
 from rclpy.node import Node
+from rclpy.qos import (
+    QoSProfile,
+    ReliabilityPolicy,
+    DurabilityPolicy,
+    HistoryPolicy,
+)
 from std_msgs.msg import Bool, String
 
 
@@ -535,12 +541,44 @@ class RobotMotionController:
 
         if ratio >= 1.0 and error <= ROBOT_JOINT_TOLERANCE_RAD:
             self._active = False
+
+            try:
+                stage = omni.usd.get_context().get_stage()
+                tcp_path = (
+                    ROBOT1_TCP_PRIM_PATH
+                    if self._config.name == "robot1"
+                    else ROBOT2_TCP_PRIM_PATH
+                )
+                tcp_pos, _ = _get_stage_world_pose(stage, tcp_path)
+
+                print(
+                    f"[TCP ACTUAL] {self._config.name} "
+                    f"xyz={tcp_pos.round(4).tolist()}",
+                    flush=True,
+                )
+            except Exception as exc:
+                print(
+                    f"[TCP ACTUAL] read failed: {exc}",
+                    flush=True,
+                )
+
             self._publish_result(True)
             return
 
         if time.monotonic() - self._start_time > ROBOT_MOTION_TIMEOUT_SEC:
+            joint_error = current - self._target_joint_positions
+
+            print(
+                f"[JOINT TIMEOUT] {self._config.name}\n"
+                f"  current = {current.round(4).tolist()}\n"
+                f"  target  = {self._target_joint_positions.round(4).tolist()}\n"
+                f"  error   = {joint_error.round(4).tolist()}",
+                flush=True,
+            )
+
             carb.log_error(
-                f"[{self._config.name}] motion timeout; max joint error={error:.4f} rad"
+                f"[{self._config.name}] motion timeout; "
+                f"max joint error={error:.4f} rad"
             )
             self._active = False
             self._publish_result(False)
@@ -559,6 +597,12 @@ class RobotMotionController:
             )
         except Exception as exc:
             carb.log_error(f"[{self._config.name}] IK exception: {exc}")
+            return False
+
+        if target_action is None:
+            carb.log_error(
+                f"[{self._config.name}] IK returned target_action=None"
+            )
             return False
 
         if not success or target_action.joint_positions is None:
@@ -581,11 +625,31 @@ class RobotMotionController:
             carb.log_error(f"[{self._config.name}] IK returned NaN/Inf")
             return False
 
+        raw_start_positions = self._robot.get_joint_positions(
+            joint_indices=indices
+        )
+
+        if raw_start_positions is None:
+            carb.log_error(
+                f"[{self._config.name}] Articulation joint positions are None "
+                f"(robot is not initialized)"
+            )
+            return False
+
         start_positions = np.asarray(
-            self._robot.get_joint_positions(joint_indices=indices),
+            raw_start_positions,
             dtype=float,
         )
+
         max_delta = float(np.max(np.abs(target_positions - start_positions)))
+
+        print(
+            f"[NetClean IK] {self._config.name} SUCCESS\n"
+            f"  start  = {start_positions.round(4).tolist()}\n"
+            f"  target = {target_positions.round(4).tolist()}\n"
+            f"  max_delta = {max_delta:.4f} rad",
+            flush=True,
+        )
         duration = max(
             ROBOT_MIN_MOTION_DURATION_SEC,
             max_delta / ROBOT_JOINT_SPEED_RAD_S,
@@ -770,7 +834,18 @@ class SimRosInterface(Node):
     def __init__(self) -> None:
         super().__init__("netclean_standalone")
 
-        self.sim_ready_pub = self.create_publisher(Bool, SIM_READY_TOPIC, 10)
+        ready_qos = QoSProfile(
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1,
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        )
+
+        self.sim_ready_pub = self.create_publisher(
+            Bool,
+            SIM_READY_TOPIC,
+            ready_qos,
+        )
         self.sim_reset_done_pub = self.create_publisher(
             Bool,
             SIM_RESET_DONE_TOPIC,

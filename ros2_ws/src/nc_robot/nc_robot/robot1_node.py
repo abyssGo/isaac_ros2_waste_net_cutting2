@@ -45,7 +45,7 @@ from nc_robot.transform_utils import (
 # 모든 TODO 값을 확인하기 전에는 False로 둡니다. 확인 후 True로 바꾸세요.
 # False 상태에서는 예시 좌표로 로봇이 움직이지 않도록 Action Goal을 거절합니다.
 
-CALIBRATION_READY = False
+CALIBRATION_READY = True
 
 
 # 1) Camera 1 World Pose -------------------------------------------------------
@@ -66,10 +66,10 @@ CALIBRATION_READY = False
 #
 # Property 창 값은 부모가 있으면 Local Pose일 수 있으므로 위 World Pose를 씁니다.
 
-CAMERA1_WORLD_POSITION = (0.0, 0.0, 0.0)  # TODO: Camera 1 World XYZ [m]
+CAMERA1_WORLD_POSITION = (-0.1, -2.0, 1.2)  # Camera 1 World XYZ [m]
 CAMERA1_PRIM_WORLD_QUATERNION_XYZW = (
-    0.0, 0.0, 0.0, 1.0,
-)  # TODO: Camera 1 World Quaternion [x, y, z, w]
+    0.5, 0.5, 0.4999994933605195, 0.5,
+)  # Camera 1 World Quaternion [x, y, z, w]
 
 # Vision의 점이 ROS optical frame(+X 오른쪽, +Y 아래, +Z 전방)이면 True.
 VISION_USES_ROS_OPTICAL_FRAME = True
@@ -81,12 +81,12 @@ VISION_USES_ROS_OPTICAL_FRAME = True
 # 정확히 단위 벡터가 아니어도 코드가 자동 정규화합니다.
 
 NET_LEFT_TO_RIGHT_AXIS_WORLD = (
-    1.0, 0.0, 0.0,
-)  # TODO: 실제 어망 왼쪽->오른쪽 World 방향
+    0.0, 1.0, 0.0,
+)  # 어망 왼쪽->오른쪽 World 방향 (+Y)
 
 NET_NORMAL_TOWARD_ROBOT1_WORLD = (
-    0.0, 1.0, 0.0,
-)  # TODO: 실제 어망 표면->Robot 1 World 방향
+    1.0, 0.0, 0.0,
+)  # 어망 표면->Robot 1 World 방향 (+X)
 
 
 # 3) 칼날 TCP Contact 자세 및 보정 -------------------------------------------
@@ -94,25 +94,33 @@ NET_NORMAL_TOWARD_ROBOT1_WORLD = (
 # end_effector_frame(TCP) Prim의 World Quaternion을 위 스크립트로 출력하세요.
 
 CUTTER_CONTACT_QUATERNION_XYZW = (
-    0.0, 1.0, 0.0, 0.0,
-)  # TODO: 칼날 Contact TCP World Quaternion [x, y, z, w]
+    -0.013577915753149037,
+     0.714877845176055,
+     0.01357303562284904,
+    -0.6989857504872482,
+)  # 칼날 Contact TCP World Quaternion [x, y, z, w]
 
 # 비전 절단점과 실제 칼날 TCP가 일치하면 0을 유지합니다.
 CUT_POINT_OFFSET_WORLD = (
     0.0, 0.0, 0.0,
-)  # TODO: 필요할 때만 절단점->TCP World XYZ 보정 [m]
+)  # 필요할 때만 절단점->TCP World XYZ 보정 [m]
 
 
 # 4) 전체 작업 후 Robot 1 Home/Safe Pose ------------------------------------
 # 충돌 없는 대기 자세로 수동 이동한 뒤 같은 TCP Prim의 World Pose를 출력합니다.
 
 ROBOT1_HOME_POSITION = (
-    0.40, -0.60, 0.80,
-)  # TODO: Robot 1 Home TCP World XYZ [m]
+    0.018859214318574534,
+    -1.601662366502892,
+    1.2578182164041043,
+)  # Robot 1 Home TCP World XYZ [m]
 
 ROBOT1_HOME_QUATERNION_XYZW = (
-    0.0, 1.0, 0.0, 0.0,
-)  # TODO: Robot 1 Home TCP World Quaternion [x, y, z, w]
+    -0.007080474416432304,
+    -0.00686355169325643,
+    0.7182533158824811,
+    -0.6957118173238206,
+)  # Robot 1 Home TCP World Quaternion [x, y, z, w]
 
 
 # =============================================================================
@@ -133,7 +141,7 @@ VALID_CLASSES = {'plastic_bottle', 'can', 'buoy'}
 APPROACH_DISTANCE_M = 0.08
 RETREAT_DISTANCE_M = 0.10
 CONTACT_HOLD_SEC = 0.50
-MOTION_TIMEOUT_SEC = 15.0
+MOTION_TIMEOUT_SEC = 70.0
 
 
 class Robot1State(Enum):

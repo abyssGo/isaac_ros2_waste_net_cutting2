@@ -18,7 +18,7 @@ vision2_node:
     station_arrived_topic: /station2/net_arrived
     remove_action_name: /remove/execute
     debug_image_topic: /vision2/debug_image
-    completion_topic: /vision2/removal_complete
+    completion_topic: /station2/complete
     sync_queue_size: 10
     sync_slop_sec: 0.10
 

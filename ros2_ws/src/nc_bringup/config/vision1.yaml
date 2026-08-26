@@ -53,5 +53,5 @@ vision1_node:
 
     # Must be the ROS optical-frame pose, not only the AG_Camera1 Xform.
     # The zero quaternion intentionally prevents unsafe plane-mode execution.
-    camera_position_world: [0.0, 0.0, 0.0]
-    camera_quaternion_world_xyzw: [0.0, 0.0, 0.0, 0.0]
+    camera_position_world: [-0.1, -2.0, 1.2]
+    camera_quaternion_world_xyzw: [0.5, 0.5, 0.5, 0.5]

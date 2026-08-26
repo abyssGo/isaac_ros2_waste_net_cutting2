@@ -3,7 +3,6 @@
   <name>nc_bringup</name>
   <version>0.2.0</version>
   <description>NetClean launch and configuration package</description>
-
   <maintainer email="pjy12110@gmail.com">yong</maintainer>
   <license>Apache-2.0</license>
 
@@ -12,6 +11,11 @@
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
+<<<<<<< HEAD
+  <exec_depend>ament_index_python</exec_depend>
+
+=======
+>>>>>>> a7fa87cc2cfab138112f67a0b9c6ab37acef3e9b
   <exec_depend>nc_control</exec_depend>
   <exec_depend>nc_robot</exec_depend>
   <exec_depend>nc_vision</exec_depend>
