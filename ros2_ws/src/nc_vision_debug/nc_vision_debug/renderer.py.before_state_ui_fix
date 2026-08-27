@@ -740,11 +740,11 @@ class PopupRenderer:
         color: Color,
     ) -> None:
         x, y = origin
-        text = self._ellipsize(text, 0.58, 1, 285)
+        text = self._ellipsize(text, 0.50, 1, 285)
         (tw, th), baseline = cv2.getTextSize(
             text,
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.58,
+            0.50,
             1,
         )
         y = int(np.clip(y, self.top_h + 2, self.height - self.bottom_h - th - baseline - 4))
@@ -758,7 +758,7 @@ class PopupRenderer:
             text,
             (x + 5, y + th + 3),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.58,
+            0.50,
             Palette.ON_DARK,
             1,
             cv2.LINE_AA,
@@ -776,7 +776,6 @@ class PopupRenderer:
         shadow: bool = False,
     ) -> None:
         text = str(text)
-        scale *= 1.15
         if max_width is not None:
             text = self._ellipsize(text, scale, thickness, max_width)
         if shadow:
@@ -811,7 +810,6 @@ class PopupRenderer:
         thickness: int,
     ) -> None:
         """High-contrast display type inspired by the supplied poster."""
-        scale *= 1.15
 
         cv2.putText(
             image,

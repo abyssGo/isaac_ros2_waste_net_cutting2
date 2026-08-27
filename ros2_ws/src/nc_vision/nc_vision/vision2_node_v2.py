@@ -1,4 +1,16 @@
-"""NetClean Station2 V2 with class-specific Depth-guided grasp targets."""
+"""NetClean Station2 V2 with class-specific Depth-guided grasp targets.
+
+v2 변경 사항 (긴급 수정 - 시간 압박으로 실측 튜닝 없이 가장 안전한 기본값으로 적용)
+------------------------------------------------------------------
+grasp_surface_offset_m 버그 수정: 카메라 optical +Z(깊이 증가) 방향이 이
+카메라/로봇 배치에서 world -X(=net 쪽)와 일치함을 실제 좌표 계산으로 확인.
+기존 기본값 0.08을 '+='로 적용하고 있어서, 측정된 물체 표면 지점에서 8cm를
+net 쪽으로 밀어넣고 있었다 (물체를 지나쳐 net까지 이동 -> 흡착 불가 원인).
+- 기본값 0.08 -> 0.0 (측정된 표면 지점을 그대로 신뢰)
+- 부호도 '+=' -> '-='로 반전 (향후 미세 보정 시 양수값 = 카메라/로봇 쪽 이동)
+launch/파라미터 YAML에서 이 값을 override하고 있다면 거기서도 반드시
+0.0으로 맞추거나 제거해야 이 수정이 실제로 적용된다.
+"""
 
 from __future__ import annotations
 
@@ -203,7 +215,7 @@ class Vision2Node(Node):
         self.declare_parameter("validation_map50_95", -1.0)
         self.declare_parameter(
             "completion_topic",
-            "/vision2/removal_complete",
+            "/station2/complete",
         )
         self.declare_parameter("sync_queue_size", 10)
         self.declare_parameter("sync_slop_sec", 0.10)
@@ -215,6 +227,15 @@ class Vision2Node(Node):
         self.declare_parameter("roi_height", 720)
 
         self.declare_parameter("suction_center_ratio", 0.25)
+        # (v2) 버그 수정: 기존 0.08은 카메라 optical +Z(깊이 증가) 방향으로
+        # 더하고 있었는데, 이 방향은 world 좌표계에서 net 쪽(-X)이었다.
+        # 즉 측정된 물체 표면 지점에서 8cm를 net 쪽으로 더 밀어넣고 있었고,
+        # 이게 "흡착 안 되고 그물로 가버리는" 증상의 원인이었다.
+        # 깊이로 측정된 지점이 이미 흡착 대상 표면이므로 추가 보정 없이
+        # 0.0으로 시작한다. 실측 후 필요하면 아주 작은 값(수 mm)만 보정한다.
+        # 기존 (주석 처리, 통합 테스트 후 문제 없으면 삭제):
+        # self.declare_parameter("grasp_surface_offset_m", 0.08)
+        self.declare_parameter("grasp_surface_offset_m", 0.0)
         self.declare_parameter("minimum_valid_depth_pixels", 20)
         self.declare_parameter("depth_scale", 1.0)
         self.declare_parameter("minimum_depth_m", 0.05)
@@ -266,6 +287,9 @@ class Vision2Node(Node):
         self.roi_height = int(value("roi_height"))
 
         self.suction_center_ratio = float(value("suction_center_ratio"))
+        self.grasp_surface_offset_m = float(
+            value("grasp_surface_offset_m")
+        )
         self.minimum_valid_depth_pixels = int(
             value("minimum_valid_depth_pixels")
         )
@@ -378,7 +402,6 @@ class Vision2Node(Node):
                 total_tasks=0,
                 message="Station2 arrived - waiting for synchronized RGB-D frame",
             )
-            self._publish_completion(False)
             self.get_logger().info(
                 "Station2 net arrived; Vision2 is armed"
             )
@@ -640,10 +663,23 @@ class Vision2Node(Node):
                     )
                     valid_depth_ratio = None
                     target_mode = "BBOX_CENTER"
+                # (v2) 버그 수정: 부호 반전.
+                # camera_frame(optical)의 +Z는 카메라에서 멀어지는 방향인데,
+                # 이 카메라/로봇 배치에서는 그 방향이 net 쪽(-X, world)이었다.
+                # 즉 기존 '+='는 항상 net 쪽으로 미는 방향이라 물체를 지나쳐
+                # net까지 가버리는 원인이었다. 이제 '-='로 바꿔서, 양수값을 넣으면
+                # 카메라(=로봇) 쪽으로 당겨오는 의미가 되도록 정정한다.
+                # 기본값은 0.0이라 지금은 사실상 no-op이며, 실측 후 미세 보정이
+                # 필요해지면 이 부호 기준으로 작은 양수값(수 mm)을 넣으면 된다.
+                # 기존 (주석 처리, 통합 테스트 후 문제 없으면 삭제):
+                # grasp_position[2] += self.grasp_surface_offset_m
+                grasp_position = np.asarray(position, dtype=float).copy()
+                grasp_position[2] -= self.grasp_surface_offset_m
+
                 target = RemoveTarget()
                 target.object_id = class_name
                 target.class_name = class_name
-                target.position = self._to_point_message(position)
+                target.position = self._to_point_message(grasp_position)
                 target.fixed_joint_path = ""
                 targets.append(target)
                 bbox_center = (
@@ -672,7 +708,9 @@ class Vision2Node(Node):
                 )
                 self.get_logger().info(
                     f"{class_name}: {target_mode} pixel={center}, "
-                    f"XYZ={position.round(4).tolist()}, fixed_joint_path=''"
+                    f"raw={position.round(4).tolist()}, "
+                    f"grasp={grasp_position.round(4).tolist()}, "
+                    "fixed_joint_path=''"
                 )
             except ValueError as error:
                 self.get_logger().warning(
@@ -789,6 +827,7 @@ class Vision2Node(Node):
             self._send_remove_goal(targets, stamp)
         except Exception as error:  # noqa: BLE001
             self.cycle_finished = True
+            self._publish_completion(False)
             self._mark_all_action_detections("FAILED")
             self._set_debug_state(
                 phase="ERROR",
@@ -837,6 +876,7 @@ class Vision2Node(Node):
         except Exception as error:  # noqa: BLE001
             self.goal_in_flight = False
             self.cycle_finished = True
+            self._publish_completion(False)
             self._mark_all_action_detections("FAILED")
             self._set_debug_state(
                 phase="ERROR",
@@ -848,6 +888,7 @@ class Vision2Node(Node):
         if not goal_handle.accepted:
             self.goal_in_flight = False
             self.cycle_finished = True
+            self._publish_completion(False)
             self._mark_all_action_detections("REJECTED")
             self._set_debug_state(
                 phase="ERROR",
@@ -893,6 +934,7 @@ class Vision2Node(Node):
             result = future.result().result
         except Exception as error:  # noqa: BLE001
             self.cycle_finished = True
+            self._publish_completion(False)
             self._mark_all_action_detections("FAILED")
             self._set_debug_state(
                 phase="ERROR",
@@ -903,6 +945,7 @@ class Vision2Node(Node):
 
         if not result.success:
             self.cycle_finished = True
+            self._publish_completion(False)
             self._mark_all_action_detections("FAILED")
             self._set_debug_state(
                 phase="ERROR",

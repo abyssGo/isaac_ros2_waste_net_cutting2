@@ -840,11 +840,11 @@ class Vision1Node(Node):
             return
 
         if result.success:
-            self._mark_all_action_detections("COMPLETE")
+            self._mark_all_action_detections("ACTION FINISHED")
             self._set_debug_state(
-                phase="COMPLETE",
+                phase="ACTION FINISHED",
                 current_task=self.debug_total_tasks,
-                message=f"CUTTING COMPLETE - {result.message}",
+                message=f"CUT ACTION FINISHED - NOT REINSPECTED - {result.message}",
             )
             self.get_logger().info(f"ExecuteCut succeeded: {result.message}")
         else:
@@ -956,10 +956,10 @@ class Vision1Node(Node):
             if not detection.get("action_included", False):
                 continue
             task_index = int(detection.get("task_index", 0))
-            if detection.get("object_id") == object_id or task_index == current:
+            if task_index == current:
                 detection["action_state"] = active_state
             elif task_index and task_index < current:
-                detection["action_state"] = "COMPLETE"
+                detection["action_state"] = "ACTION FINISHED"
             else:
                 detection["action_state"] = "QUEUED"
         self.debug_current_task = current

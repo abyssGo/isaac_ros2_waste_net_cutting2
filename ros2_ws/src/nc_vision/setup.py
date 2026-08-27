@@ -30,6 +30,7 @@ setup(
             "vision2_node_v2 = nc_vision.vision2_node_v2:main",
             "vision1_node_v3 = nc_vision.vision1_node_v3:main",
             "vision2_node_v3 = nc_vision.vision2_node_v3:main",
+            "vision2_node_v2_3 = nc_vision.vision2_node_v2_3:main",
         ],
     },
 )
