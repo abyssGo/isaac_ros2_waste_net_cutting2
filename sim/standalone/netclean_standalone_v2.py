@@ -55,7 +55,7 @@ CONFIG_READY = True
 
 # 1) 저장한 최종 USD의 절대 경로
 # 예: "/home/yong/netclean/assets/netclean_world.usd"
-USD_PATH = "/home/rokey/isaac_simulation_intergration/project1/simulation_integration_v3.usd"
+USD_PATH = "/home/rokey/isaac_simulation_intergration/project1/simulation_integration_v4.usd"
 
 
 # 2) 월드 안의 필수 Prim 경로
@@ -134,7 +134,7 @@ PHYSICS_DT = 1.0 / 60.0
 RENDERING_DT = 1.0 / 60.0
 WARMUP_STEPS = 30
 
-NET_SPEED_MPS = 0.36
+NET_SPEED_MPS = 0.5
 NET_CURRENT_POSE_HZ = 20.0
 READY_PUBLISH_HZ = 1.0
 
@@ -211,11 +211,13 @@ SAFE_HOME_JOINTS_RAD = (
 
 ROBOT1_TCP_PRIM_PATH = "/World/robot1/link_6/CutterTCP"
 ROBOT2_TCP_PRIM_PATH = "/World/robot2/m0609/link_6/SuctionTCP"
+ROBOT2_TCP_CHECK_PRIM_PATH = "/World/robot2/m0609/link_6/SuctionTCP"
 
-# Runtime suction은 Surface Gripper Schema를 사용하지 않는다.
+# Runtime suction Joint는 실제 rigid body(link_6)에 연결한다.
 ROBOT2_SUCTION_BODY_PRIM_PATH = "/World/robot2/m0609/link_6"
 RUNTIME_ROOT_PRIM_PATH = "/World/NetCleanRuntime"
 RUNTIME_SUCTION_JOINT_PATH = "/World/NetCleanRuntime/Robot2SuctionJoint"
+SUCTION_CONTACT_TOLERANCE_M = 0.01
 
 NET_TARGET_TOLERANCE_M = 0.005
 
@@ -739,10 +741,44 @@ class RuntimeSuctionController:
         if not self._stage.GetPrimAtPath(RUNTIME_ROOT_PRIM_PATH).IsValid():
             self._stage.DefinePrim(RUNTIME_ROOT_PRIM_PATH, "Xform")
         try:
-            body0_pos, body0_q = _get_stage_world_pose(self._stage, ROBOT2_SUCTION_BODY_PRIM_PATH)
-            body1_pos, body1_q = _get_stage_world_pose(self._stage, object_body_path)
+            # body0_pos, body0_q = _get_stage_world_pose(self._stage, ROBOT2_SUCTION_BODY_PRIM_PATH)
+            # body1_pos, body1_q = _get_stage_world_pose(self._stage, object_body_path)
+            # rotation0 = _quaternion_to_rotation_matrix_wxyz(body0_q)
+            # local_pos0 = rotation0.T @ (body1_pos - body0_pos)
+
+            tcp_pos, tcp_q = _get_stage_world_pose(
+                self._stage,
+                ROBOT2_TCP_CHECK_PRIM_PATH,
+            )
+
+            body0_pos, body0_q = _get_stage_world_pose(
+                self._stage,
+                ROBOT2_SUCTION_BODY_PRIM_PATH,
+            )
+
+            body1_pos, body1_q = _get_stage_world_pose(
+                self._stage,
+                object_body_path,
+            )
+
+            distance = float(
+                np.linalg.norm(body1_pos - tcp_pos)
+            )
+
+            if distance > SUCTION_CONTACT_TOLERANCE_M:
+                carb.log_error(
+                    f"[robot2 suction] attach rejected: "
+                    f"distance={distance:.4f}m "
+                    f"(limit={SUCTION_CONTACT_TOLERANCE_M:.4f}m)"
+                )
+                return False
+
             rotation0 = _quaternion_to_rotation_matrix_wxyz(body0_q)
-            local_pos0 = rotation0.T @ (body1_pos - body0_pos)
+
+            local_pos0 = rotation0.T @ (
+                body1_pos - body0_pos
+            )
+
             local_rot0 = _normalize_quaternion_wxyz(_quaternion_multiply_wxyz(_quaternion_inverse_wxyz(body0_q), body1_q), "runtime suction local rotation")
             joint = UsdPhysics.FixedJoint.Define(self._stage, RUNTIME_SUCTION_JOINT_PATH)
             joint.CreateBody0Rel().SetTargets([Sdf.Path(ROBOT2_SUCTION_BODY_PRIM_PATH)])

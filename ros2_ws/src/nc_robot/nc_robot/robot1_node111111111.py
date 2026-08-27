@@ -8,19 +8,6 @@ Robot 1 -> /station1/cut_complete (Bool) -> Control
 
 각 객체의 P1, P2를 Approach -> Contact -> Hold -> Retreat 순으로 처리한다.
 Robot 1은 Fixed Joint 해제, 흡착, 잔여 객체 검사를 수행하지 않는다.
-
-v2 변경 사항 (원본은 각 위치에 주석으로 남겨둠, 통합 테스트 후 문제 없으면 삭제)
-------------------------------------------------------------------
-1. APPROACH/RETREAT 거리를 8/10cm -> 12/15cm로 확대.
-   (ikpy 기반 URDF FK/IK 근사 검증: net 패널 전역에서 IK 수렴 실패 없음,
-    관절3 여유도 최소 32~37도 확보. 단, 이보다 더 늘릴 경우 재검증 필요.)
-2. CONTACT 실패 후 재시도 시, RETREAT 없이 곧바로 Home으로 점프하던 것을
-   RETREAT(안전 후퇴) -> RECOVERY_HOME -> APPROACH(재진입) -> CONTACT 순서로 변경.
-3. RECOVERY_HOME 실패 시 "현재 위치에서 재시도"하던 낙관적 처리를 제거하고,
-   안전 재후퇴를 한 번 더 시도 -> 그래도 실패하면 해당 절단점 skip이 아니라
-   전체 Action을 abort하도록 변경 (Robot1HomeRecoveryFailure 예외 사용).
-4. (패스 - 미적용)
-5. 모션 실패 시 목표 pose 좌표를 로그에 남기도록 _send_motion_and_wait()에 추가.
 """
 
 from __future__ import annotations
@@ -151,26 +138,10 @@ WORLD_FRAME = 'world'
 # Vision 1과 동일한 클래스 문자열을 사용합니다.
 VALID_CLASSES = {'plastic_bottle', 'can', 'buoy'}
 
-# v2: ikpy 기반 URDF IK 근사 검증 결과 12/15cm까지는 net 패널 전역에서
-# IK 수렴 실패 없음, 관절3(가장 좁은 가동범위) 여유도 최소 32~37도 확보됨.
-# 기존 값 (통합 테스트 후 문제 없으면 아래 두 줄은 삭제 가능):
-# APPROACH_DISTANCE_M = 0.08
-# RETREAT_DISTANCE_M = 0.10
-APPROACH_DISTANCE_M = 0.12
-RETREAT_DISTANCE_M = 0.15
+APPROACH_DISTANCE_M = 0.08
+RETREAT_DISTANCE_M = 0.10
 CONTACT_HOLD_SEC = 0.50
 MOTION_TIMEOUT_SEC = 70.0
-
-
-class Robot1HomeRecoveryFailure(Exception):
-    """(v2) RECOVERY_HOME과 안전 재후퇴까지 모두 실패해 로봇 위치를 신뢰할 수
-    없을 때 발생시킨다. 개별 절단점만 skip하는 것이 아니라 전체 Action을
-    abort해야 한다는 신호로 사용한다.
-    """
-
-    def __init__(self, label: str, message: str) -> None:
-        super().__init__(message)
-        self.label = label
 
 
 class Robot1State(Enum):
@@ -386,16 +357,6 @@ class Robot1Node(Node):
             self.get_logger().info(result.message)
             self.get_logger().info('/station1/cut_complete=True published')
             return result
-        except Robot1HomeRecoveryFailure as error:
-            # (v2-3) RECOVERY_HOME + 안전 재후퇴까지 모두 실패한 경우:
-            # 개별 절단점 skip이 아니라 전체 Action을 abort한다.
-            self.get_logger().error(
-                f'Robot 1 안전 복구 실패로 전체 작업을 중단합니다: {error}'
-            )
-            goal_handle.abort()
-            result.success = False
-            result.message = str(error)
-            return result
         except Exception as error:
             self.get_logger().error(f'Robot 1 실행 오류: {error}')
             goal_handle.abort()
@@ -475,48 +436,14 @@ class Robot1Node(Node):
             current_object_id,
             f'{label}:CONTACT',
         )
-        # ============================================================
-        # v2 이전 로직 (주석 처리, 통합 테스트 후 문제 없으면 삭제):
-        #
-        # contact_success = False
-        # for retry in range(2):
-        #     if self._send_motion_and_wait(
-        #         self._cut_pose(contact),
-        #         f'{label}:CONTACT_ATTEMPT_{retry + 1}',
-        #     ):
-        #         contact_success = True
-        #         break
-        #     self.get_logger().warning(
-        #         f'{label} CONTACT 절단 시도 실패 ({retry + 1}/2)'
-        #     )
-        #     if retry == 0:
-        #         recovery_success = self._send_motion_and_wait(
-        #             self._home_pose(),
-        #             'RECOVERY_HOME',
-        #         )
-        #         if not recovery_success:
-        #             self.get_logger().warning(
-        #                 'Recovery HOME 실패 - 현재 위치에서 재시도 진행'
-        #             )
-        # if not contact_success:
-        #     self.get_logger().error(
-        #         f'{label} 2회 절단 시도 실패 - 해당 절단점 skip'
-        #     )
-        #     return False
-        #
-        # 문제점:
-        #  2) 재시도 시 APPROACH 없이 곧바로 CONTACT로 재진입 -> net 앞 완충 지점을
-        #     거치지 않아 진입 경로가 정상 흐름과 달라짐.
-        #  3) RECOVERY_HOME 실패 시에도 "현재 위치에서 재시도"하는 낙관적 처리 ->
-        #     로봇 위치를 신뢰할 수 없는 상태로 계속 진행하는 것은 위험.
-        # (RETREAT 없이 CONTACT->Home 직행 문제(1번)는 이미 RECOVERY_RETREAT로 해결)
-        # ============================================================
-
         contact_success = False
 
+        # 최소 1회 절단 시도 보장 + 실패 시 1회 추가 재시도
         for retry in range(2):
-            contact_label = f'{label}:CONTACT_ATTEMPT_{retry + 1}'
-            if self._send_motion_and_wait(self._cut_pose(contact), contact_label):
+            if self._send_motion_and_wait(
+                self._cut_pose(contact),
+                f'{label}:CONTACT_ATTEMPT_{retry + 1}',
+            ):
                 contact_success = True
                 break
 
@@ -524,55 +451,21 @@ class Robot1Node(Node):
                 f'{label} CONTACT 절단 시도 실패 ({retry + 1}/2)'
             )
 
+            # 첫 번째 실패 후 안전 자세 복귀를 시도하고 두 번째 절단을 시도
             if retry == 0:
-                # (v2-2) Home으로 바로 가지 않고 net 밖(RETREAT 지점)으로 먼저 안전 후퇴
-                retreat_label = f'{label}:RECOVERY_RETREAT'
-                if not self._send_motion_and_wait(self._cut_pose(retreat), retreat_label):
-                    self.get_logger().warning(
-                        f'{label} RECOVERY_RETREAT 실패 - 현재 위치에서 Home 시도'
-                    )
-
-                home_label = f'{label}:RECOVERY_HOME'
-                recovery_success = self._send_motion_and_wait(self._home_pose(), home_label)
+                recovery_success = self._send_motion_and_wait(
+                    self._home_pose(),
+                    'RECOVERY_HOME',
+                )
 
                 if not recovery_success:
-                    self.get_logger().error(
-                        f'{label} RECOVERY_HOME 실패 - 안전 확보를 위해 재후퇴를 '
-                        f'한 번 더 시도합니다.'
-                    )
-                    # (v2-3) Home 복귀조차 실패하면 "현재 위치에서 재시도"하지 않는다.
-                    # 최소 한 번 더 안전 후퇴를 시도하고, 그래도 실패하면
-                    # 해당 절단점만 skip하는 게 아니라 전체 Action을 abort한다.
-                    failsafe_label = f'{label}:RECOVERY_FAILSAFE_RETREAT'
-                    failsafe_ok = self._send_motion_and_wait(
-                        self._cut_pose(retreat), failsafe_label
-                    )
-
-                    if not failsafe_ok:
-                        raise Robot1HomeRecoveryFailure(
-                            label,
-                            f'{label}: RECOVERY_HOME 실패 + 안전 재후퇴도 실패 - '
-                            f'로봇 위치를 신뢰할 수 없어 전체 작업을 중단합니다.',
-                        )
-
-                    self.get_logger().error(
-                        f'{label} RECOVERY_HOME은 실패했지만 안전 재후퇴는 성공 - '
-                        f'해당 절단점만 skip하고 계속 진행합니다.'
-                    )
-                    # Home은 확정 못 했지만 net 밖 안전 지점은 확보했으므로,
-                    # 이번 절단점은 skip하고 다음 절단점으로 넘어간다.
-                    break
-
-                # (v2-2) 재시도 전에도 CONTACT로 바로 들어가지 않고 APPROACH부터 재진입
-                approach_label = f'{label}:RECOVERY_APPROACH'
-                if not self._send_motion_and_wait(self._cut_pose(approach), approach_label):
                     self.get_logger().warning(
-                        f'{label} RECOVERY_APPROACH 실패 - 현재 위치에서 CONTACT 재시도'
+                        'Recovery HOME 실패 - 현재 위치에서 재시도 진행'
                     )
 
         if not contact_success:
             self.get_logger().error(
-                f'{label} 절단 시도 실패 - 해당 절단점 skip'
+                f'{label} 2회 절단 시도 실패 - 해당 절단점 skip'
             )
             return False
 
@@ -626,29 +519,12 @@ class Robot1Node(Node):
         if not self._motion_event.wait(timeout=MOTION_TIMEOUT_SEC):
             with self._motion_lock:
                 self._waiting_for_motion = False
-            # (v2) 기존: self.get_logger().error(f'Motion timeout: {label}')
-            # 실패 시 목표 pose 좌표를 함께 남겨 사후 원인 분석을 돕는다.
-            self.get_logger().error(
-                f'Motion timeout: {label} target=('
-                f'{pose.pose.position.x:.4f}, '
-                f'{pose.pose.position.y:.4f}, '
-                f'{pose.pose.position.z:.4f})'
-            )
+            self.get_logger().error(f'Motion timeout: {label}')
             return False
 
         with self._motion_lock:
             success = bool(self._motion_result)
             self._waiting_for_motion = False
-
-        if not success:
-            # (v2) Standalone이 명시적으로 실패(Bool=False)를 보고한 경우에도
-            # 동일하게 목표 pose 좌표를 남긴다.
-            self.get_logger().error(
-                f'Motion failed (standalone reported False): {label} target=('
-                f'{pose.pose.position.x:.4f}, '
-                f'{pose.pose.position.y:.4f}, '
-                f'{pose.pose.position.z:.4f})'
-            )
         return success
 
     def _motion_done_callback(self, msg: Bool) -> None:

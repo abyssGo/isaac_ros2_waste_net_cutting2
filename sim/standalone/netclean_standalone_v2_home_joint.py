@@ -55,7 +55,7 @@ CONFIG_READY = True
 
 # 1) 저장한 최종 USD의 절대 경로
 # 예: "/home/yong/netclean/assets/netclean_world.usd"
-USD_PATH = "/home/rokey/isaac_simulation_intergration/project1/simulation_integration_v3.usd"
+USD_PATH = "/home/rokey/isaac_simulation_intergration/project1/simulation_integration_v4.usd"
 
 
 # 2) 월드 안의 필수 Prim 경로
@@ -134,7 +134,7 @@ PHYSICS_DT = 1.0 / 60.0
 RENDERING_DT = 1.0 / 60.0
 WARMUP_STEPS = 30
 
-NET_SPEED_MPS = 0.36
+NET_SPEED_MPS = 0.5
 NET_CURRENT_POSE_HZ = 20.0
 READY_PUBLISH_HZ = 1.0
 
@@ -208,6 +208,16 @@ SAFE_HOME_JOINTS_RAD = (
      0.0,
      0.0,
 )
+
+ROBOT1_HOME_POSITION_WORLD = np.asarray(
+    [0.018859214318574534, -1.601662366502892, 1.2578182164041043],
+    dtype=float,
+)
+ROBOT2_HOME_POSITION_WORLD = np.asarray(
+    [-0.007563448984626552, 2.4009529933486675, 1.2495370123800529],
+    dtype=float,
+)
+HOME_POSITION_TOLERANCE_M = 0.01
 
 ROBOT1_TCP_PRIM_PATH = "/World/robot1/link_6/CutterTCP"
 ROBOT2_TCP_PRIM_PATH = "/World/robot2/m0609/link_6/SuctionTCP"
@@ -593,20 +603,57 @@ class RobotMotionController:
             self._publish_result(False)
 
     def _begin_request(self, request: MotionRequest) -> bool:
-        try:
-            flange_position, flange_orientation = _tcp_target_to_flange_target(
-                request.position_world,
-                request.orientation_world_wxyz,
-                self._flange_to_tcp_position,
-                self._flange_to_tcp_orientation,
+        # Home 복귀는 Cartesian IK를 사용하지 않고 Joint 목표로 이동한다.
+        # Home은 작업 TCP 정밀 위치가 아니라 반복 시작/종료 안전 자세이므로
+        # IK branch 선택 문제를 피한다.
+        home_position = (
+            ROBOT1_HOME_POSITION_WORLD
+            if self._config.name == "robot1"
+            else ROBOT2_HOME_POSITION_WORLD
+        )
+        is_home_request = (
+            float(np.linalg.norm(request.position_world - home_position))
+            <= HOME_POSITION_TOLERANCE_M
+        )
+
+        if is_home_request:
+            target_positions = np.asarray(
+                SAFE_HOME_JOINTS_RAD,
+                dtype=float,
             )
-            target_action, success = self._ik.compute_inverse_kinematics(
-                target_position=flange_position,
-                target_orientation=flange_orientation,
-            )
-        except Exception as exc:
-            carb.log_error(f"[{self._config.name}] IK exception: {exc}")
-            return False
+            indices = np.arange(len(SAFE_HOME_JOINTS_RAD), dtype=np.int64)
+            success = True
+        else:
+            try:
+                flange_position, flange_orientation = _tcp_target_to_flange_target(
+                    request.position_world,
+                    request.orientation_world_wxyz,
+                    self._flange_to_tcp_position,
+                    self._flange_to_tcp_orientation,
+                )
+                target_action, success = self._ik.compute_inverse_kinematics(
+                    target_position=flange_position,
+                    target_orientation=flange_orientation,
+                )
+            except Exception as exc:
+                carb.log_error(f"[{self._config.name}] IK exception: {exc}")
+                return False
+
+            if target_action is None:
+                carb.log_error(
+                    f"[{self._config.name}] IK returned target_action=None"
+                )
+                return False
+
+            if not success or target_action.joint_positions is None:
+                carb.log_error(f"[{self._config.name}] IK failed")
+                return False
+
+            target_positions = np.asarray(target_action.joint_positions, dtype=float)
+            if target_action.joint_indices is None:
+                indices = np.arange(target_positions.size, dtype=np.int64)
+            else:
+                indices = np.asarray(target_action.joint_indices, dtype=np.int64)
 
         if target_action is None:
             carb.log_error(

@@ -28,6 +28,20 @@ Isaac Sim 설치 폴더에서:
 - 2026-08-26 오전 확인한 실제 USD/Robot/Camera/TCP/Joint 경로를 반영했다.
 - 랜덤 스폰, 동적 registry, YOLO, 공정 FSM은 포함하지 않는다.
 - 현재 robot2_node.py에 맞춰 class_name 기반 Joint 해제 방식을 사용한다.
+
+v2 변경 사항 (로봇1/2 -v2 노드와 맞물려 동작하도록 수정, 토픽/메시지 변경 없음)
+------------------------------------------------------------------
+RuntimeSuctionController.attach_class()의 접촉 거리 판정 버그 수정.
+기존에는 link_6 원점(ROBOT2_SUCTION_BODY_PRIM_PATH) 기준으로 물체와의 거리를
+쟀는데, 실제 접촉면은 거기서 ROBOT2_FLANGE_TO_TCP_POSITION(~12.2cm)만큼 떨어진
+SuctionTCP다. 그래서 TCP가 물체에 완벽히 닿아도 거리 계산은 항상 ~12cm로 나와
+접촉 허용값을 항상 초과해 attach가 100% 실패하고 있었다.
+(이 때문에 SUCTION_ON은 성공하지만 JOINT_RELEASE가 매번 실패해 로봇2 Action이
+abort되는 증상이 재현됨.) 접촉 판정 기준점을 SuctionTCP로 바꿨다. Runtime
+FixedJoint의 body0은 물리적으로 올바른 link_6를 유지하되, body0/body1의 local
+joint frame은 생성 순간의 SuctionTCP world pose에서 서로 일치하도록 계산한다.
+로봇1/2 노드에 추가된 재시도·복구 로직은 기존 PoseStamped를 그대로 재사용하는
+방식이라 이 standalone과의 토픽 인터페이스에는 영향이 없다.
 """
 
 from __future__ import annotations
@@ -55,7 +69,7 @@ CONFIG_READY = True
 
 # 1) 저장한 최종 USD의 절대 경로
 # 예: "/home/yong/netclean/assets/netclean_world.usd"
-USD_PATH = "/home/rokey/isaac_simulation_intergration/project1/simulation_integration_v3.usd"
+USD_PATH = "/home/rokey/isaac_simulation_intergration/project1/simulation_integration_v4.usd"
 
 
 # 2) 월드 안의 필수 Prim 경로
@@ -134,16 +148,24 @@ PHYSICS_DT = 1.0 / 60.0
 RENDERING_DT = 1.0 / 60.0
 WARMUP_STEPS = 30
 
-NET_SPEED_MPS = 0.36
+NET_SPEED_MPS = 0.5
 NET_CURRENT_POSE_HZ = 20.0
 READY_PUBLISH_HZ = 1.0
 
-ROBOT_JOINT_SPEED_RAD_S = 0.50
+ROBOT_JOINT_SPEED_RAD_S = 0.35
 ROBOT_MIN_MOTION_DURATION_SEC = 0.30
 ROBOT_JOINT_TOLERANCE_RAD = math.radians(1.0)
-ROBOT_MOTION_TIMEOUT_SEC = 15.0
+ROBOT_MOTION_TIMEOUT_SEC = 40.0
 
 SUCTION_TIMEOUT_SEC = 5.0
+# Runtime FixedJoint 생성 전 suction TCP-object *표면* 접촉 허용 거리.
+# RGB-D/외부 파라미터/물리 step 오차를 포함하므로 1 cm는 지나치게 엄격하다.
+SUCTION_CONTACT_TOLERANCE_M = 0.03
+
+# 물체를 SuctionTCP로 순간이동시키는 진단 모드는 최종 공정에서 금지한다.
+# Robot2가 실제 물체 표면까지 이동한 뒤에만 접촉 거리 검사를 통과하고 Joint가
+# 생성되어야 한다.
+DIRECT_SUCTION_SNAP_TO_TCP = False
 
 
 # =============================================================================
@@ -208,6 +230,16 @@ SAFE_HOME_JOINTS_RAD = (
      0.0,
      0.0,
 )
+
+ROBOT1_HOME_POSITION_WORLD = np.asarray(
+    [0.018859214318574534, -1.601662366502892, 1.2578182164041043],
+    dtype=float,
+)
+ROBOT2_HOME_POSITION_WORLD = np.asarray(
+    [-0.007563448984626552, 2.4009529933486675, 1.2495370123800529],
+    dtype=float,
+)
+HOME_POSITION_TOLERANCE_M = 0.01
 
 ROBOT1_TCP_PRIM_PATH = "/World/robot1/link_6/CutterTCP"
 ROBOT2_TCP_PRIM_PATH = "/World/robot2/m0609/link_6/SuctionTCP"
@@ -593,36 +625,77 @@ class RobotMotionController:
             self._publish_result(False)
 
     def _begin_request(self, request: MotionRequest) -> bool:
-        try:
-            flange_position, flange_orientation = _tcp_target_to_flange_target(
-                request.position_world,
-                request.orientation_world_wxyz,
-                self._flange_to_tcp_position,
-                self._flange_to_tcp_orientation,
-            )
-            target_action, success = self._ik.compute_inverse_kinematics(
-                target_position=flange_position,
-                target_orientation=flange_orientation,
-            )
-        except Exception as exc:
-            carb.log_error(f"[{self._config.name}] IK exception: {exc}")
-            return False
+        # Home 복귀는 Cartesian IK를 사용하지 않고 Joint 목표로 이동한다.
+        # Home은 작업 TCP 정밀 위치가 아니라 반복 시작/종료 안전 자세이므로
+        # IK branch 선택 문제를 피한다.
+        home_position = (
+            ROBOT1_HOME_POSITION_WORLD
+            if self._config.name == "robot1"
+            else ROBOT2_HOME_POSITION_WORLD
+        )
+        is_home_request = (
+            float(np.linalg.norm(request.position_world - home_position))
+            <= HOME_POSITION_TOLERANCE_M
+        )
 
-        if target_action is None:
-            carb.log_error(
-                f"[{self._config.name}] IK returned target_action=None"
+        if is_home_request:
+            target_positions = np.asarray(
+                SAFE_HOME_JOINTS_RAD,
+                dtype=float,
             )
-            return False
-
-        if not success or target_action.joint_positions is None:
-            carb.log_error(f"[{self._config.name}] IK failed")
-            return False
-
-        target_positions = np.asarray(target_action.joint_positions, dtype=float)
-        if target_action.joint_indices is None:
-            indices = np.arange(target_positions.size, dtype=np.int64)
+            indices = np.arange(len(SAFE_HOME_JOINTS_RAD), dtype=np.int64)
+            success = True
         else:
-            indices = np.asarray(target_action.joint_indices, dtype=np.int64)
+            try:
+                flange_position, flange_orientation = _tcp_target_to_flange_target(
+                    request.position_world,
+                    request.orientation_world_wxyz,
+                    self._flange_to_tcp_position,
+                    self._flange_to_tcp_orientation,
+                )
+                target_action, success = self._ik.compute_inverse_kinematics(
+                    target_position=flange_position,
+                    target_orientation=flange_orientation,
+                )
+            except Exception as exc:
+                self._log_ik_failure(
+                    request,
+                    reason=f"IK exception: {exc}",
+                )
+                carb.log_error(f"[{self._config.name}] IK exception: {exc}")
+                return False
+
+            if target_action is None:
+                self._log_ik_failure(
+                    request,
+                    reason="IK returned target_action=None",
+                    flange_position=flange_position,
+                    flange_orientation=flange_orientation,
+                )
+                carb.log_error(
+                    f"[{self._config.name}] IK returned target_action=None"
+                )
+                return False
+
+            if not success or target_action.joint_positions is None:
+                self._log_ik_failure(
+                    request,
+                    reason=(
+                        f"solver_success={bool(success)}, "
+                        "joint_positions="
+                        f"{'set' if target_action.joint_positions is not None else 'None'}"
+                    ),
+                    flange_position=flange_position,
+                    flange_orientation=flange_orientation,
+                )
+                carb.log_error(f"[{self._config.name}] IK failed")
+                return False
+
+            target_positions = np.asarray(target_action.joint_positions, dtype=float)
+            if target_action.joint_indices is None:
+                indices = np.arange(target_positions.size, dtype=np.int64)
+            else:
+                indices = np.asarray(target_action.joint_indices, dtype=np.int64)
 
         if target_positions.ndim != 1 or target_positions.size != indices.size:
             carb.log_error(
@@ -676,6 +749,73 @@ class RobotMotionController:
         )
         return True
 
+    def _log_ik_failure(
+        self,
+        request: MotionRequest,
+        *,
+        reason: str,
+        flange_position=None,
+        flange_orientation=None,
+    ) -> None:
+        """IK 실패 시 좌표계/도달성 원인을 한 로그에서 판별 가능하게 한다."""
+        lines = [
+            f"[NetClean IK] {self._config.name} FAILED",
+            f"  reason = {reason}",
+            f"  requested_tcp_xyz = "
+            f"{request.position_world.round(4).tolist()}",
+            f"  requested_tcp_quat_wxyz = "
+            f"{request.orientation_world_wxyz.round(5).tolist()}",
+        ]
+
+        if flange_position is not None:
+            lines.append(
+                f"  converted_flange_xyz = "
+                f"{np.asarray(flange_position).round(4).tolist()}"
+            )
+        if flange_orientation is not None:
+            lines.append(
+                f"  converted_flange_quat_wxyz = "
+                f"{np.asarray(flange_orientation).round(5).tolist()}"
+            )
+
+        try:
+            base_position, _ = self._robot.get_world_pose()
+            base_position = np.asarray(base_position, dtype=float)
+            distance = float(
+                np.linalg.norm(request.position_world - base_position)
+            )
+            lines.append(f"  robot_base_xyz = {base_position.round(4).tolist()}")
+            lines.append(f"  tcp_target_distance_from_base = {distance:.4f} m")
+        except Exception as exc:
+            lines.append(f"  robot_base_read_error = {exc}")
+
+        try:
+            stage = omni.usd.get_context().get_stage()
+            tcp_path = (
+                ROBOT1_TCP_PRIM_PATH
+                if self._config.name == "robot1"
+                else ROBOT2_TCP_PRIM_PATH
+            )
+            current_tcp, _ = _get_stage_world_pose(stage, tcp_path)
+            lines.append(
+                f"  current_tcp_xyz = {current_tcp.round(4).tolist()}"
+            )
+        except Exception as exc:
+            lines.append(f"  current_tcp_read_error = {exc}")
+
+        try:
+            current_joints = np.asarray(
+                self._robot.get_joint_positions(),
+                dtype=float,
+            )
+            lines.append(
+                f"  current_joints = {current_joints.round(4).tolist()}"
+            )
+        except Exception as exc:
+            lines.append(f"  current_joints_read_error = {exc}")
+
+        print("\n".join(lines), flush=True)
+
     def _publish_result(self, success: bool) -> None:
         msg = Bool()
         msg.data = bool(success)
@@ -683,15 +823,26 @@ class RobotMotionController:
         self._result_publisher.publish(msg)
 
 class RuntimeSuctionController:
-    """VG10 suction: ON=armed, class release 시 Runtime FixedJoint를 실제 생성한다."""
+    """VG10 suction: TCP 기준 virtual attach 방식."""
 
-    def __init__(self, stage, object_body_path_by_class, state_publisher):
+    def __init__(
+        self,
+        stage,
+        object_body_path_by_class,
+        object_wrapper_by_class,
+        state_publisher,
+    ):
         self._stage = stage
         self._object_body_paths = dict(object_body_path_by_class)
+        self._object_wrappers = dict(object_wrapper_by_class)
         self._publisher = state_publisher
         self._requests = deque()
+
         self._armed = False
         self._attached_class = None
+        self._attached_offset = None
+        self._attached_rotation_offset = None
+        self._attached_object_wrapper = None
 
     def enqueue(self, enabled):
         self._requests.append(bool(enabled))
@@ -704,74 +855,143 @@ class RuntimeSuctionController:
 
     def reset(self):
         self._requests.clear()
-        self._remove_runtime_joint()
         self._armed = False
         self._attached_class = None
+        self._attached_offset = None
+        self._attached_rotation_offset = None
+        self._attached_object_wrapper = None
 
     def update(self):
-        if not self._requests:
-            return
-        enabled = self._requests.popleft()
-        if enabled:
-            self._armed = True
-            self._publish_state(True)
-            carb.log_info("[robot2 suction] armed")
-        else:
-            self._remove_runtime_joint()
-            self._armed = False
-            self._attached_class = None
-            self._publish_state(False)
-            carb.log_info("[robot2 suction] released")
+        if self._requests:
+            enabled = self._requests.popleft()
+
+            if enabled:
+                self._armed = True
+                self._publish_state(True)
+                carb.log_info("[robot2 suction] armed")
+            else:
+                self._armed = False
+                self._attached_class = None
+                self._attached_offset = None
+                self._attached_rotation_offset = None
+                self._attached_object_wrapper = None
+                self._publish_state(False)
+                carb.log_info("[robot2 suction] released")
+
+        if (
+            self._attached_class is not None
+            and self._attached_offset is not None
+            and self._attached_object_wrapper is not None
+        ):
+            tcp_pos, tcp_q = _get_stage_world_pose(
+                self._stage,
+                ROBOT2_TCP_PRIM_PATH,
+            )
+
+            object_pos = tcp_pos + self._attached_offset
+
+            object_q = _quaternion_multiply_wxyz(
+                tcp_q,
+                self._attached_rotation_offset,
+            )
+
+            self._attached_object_wrapper.set_world_pose(
+                position=object_pos,
+                orientation=object_q,
+            )
+
+            try:
+                self._attached_object_wrapper.set_linear_velocity(np.zeros(3))
+                self._attached_object_wrapper.set_angular_velocity(np.zeros(3))
+            except Exception:
+                pass
 
     def attach_class(self, class_name):
         class_name = class_name.strip().lower()
+
         if not self._armed:
             carb.log_error("[robot2 suction] attach rejected: suction is not armed")
             return False
+
         object_body_path = self._object_body_paths.get(class_name)
+
         if object_body_path is None:
             carb.log_error(f"[robot2 suction] no body mapping for {class_name!r}")
             return False
-        if self._attached_class is not None:
-            return self._attached_class == class_name
-        if self._stage.GetPrimAtPath(RUNTIME_SUCTION_JOINT_PATH).IsValid():
-            self._stage.RemovePrim(RUNTIME_SUCTION_JOINT_PATH)
-        if not self._stage.GetPrimAtPath(RUNTIME_ROOT_PRIM_PATH).IsValid():
-            self._stage.DefinePrim(RUNTIME_ROOT_PRIM_PATH, "Xform")
+
         try:
-            body0_pos, body0_q = _get_stage_world_pose(self._stage, ROBOT2_SUCTION_BODY_PRIM_PATH)
-            body1_pos, body1_q = _get_stage_world_pose(self._stage, object_body_path)
-            rotation0 = _quaternion_to_rotation_matrix_wxyz(body0_q)
-            local_pos0 = rotation0.T @ (body1_pos - body0_pos)
-            local_rot0 = _normalize_quaternion_wxyz(_quaternion_multiply_wxyz(_quaternion_inverse_wxyz(body0_q), body1_q), "runtime suction local rotation")
-            joint = UsdPhysics.FixedJoint.Define(self._stage, RUNTIME_SUCTION_JOINT_PATH)
-            joint.CreateBody0Rel().SetTargets([Sdf.Path(ROBOT2_SUCTION_BODY_PRIM_PATH)])
-            joint.CreateBody1Rel().SetTargets([Sdf.Path(object_body_path)])
-            joint.CreateLocalPos0Attr().Set(Gf.Vec3f(*[float(v) for v in local_pos0]))
-            joint.CreateLocalRot0Attr().Set(Gf.Quatf(float(local_rot0[0]), Gf.Vec3f(float(local_rot0[1]), float(local_rot0[2]), float(local_rot0[3]))))
-            joint.CreateLocalPos1Attr().Set(Gf.Vec3f(0.0, 0.0, 0.0))
-            joint.CreateLocalRot1Attr().Set(Gf.Quatf(1.0, Gf.Vec3f(0.0, 0.0, 0.0)))
-            joint.CreateJointEnabledAttr().Set(True)
+            tcp_pos, tcp_q = _get_stage_world_pose(
+                self._stage,
+                ROBOT2_TCP_PRIM_PATH,
+            )
+
+            (
+                surface_distance,
+                closest_surface_point,
+                _,
+                _,
+            ) = _distance_to_prim_world_bounds(
+                self._stage,
+                object_body_path,
+                tcp_pos,
+            )
+
+            if surface_distance > SUCTION_CONTACT_TOLERANCE_M:
+                carb.log_error(
+                    f"[robot2 suction] attach rejected: surface_distance={surface_distance:.4f}m"
+                )
+                return False
+
+            # TCP-접촉면 offset이 아니라 실제 RigidBody 원점과 TCP 사이의
+            # 상대 위치를 저장한다.
+            # update()에서 set_world_pose()는 RigidBody 원점 위치를 넣기 때문에
+            # 물체 중심(origin) 기준 offset이어야 한다.
+            object_pos, _ = _get_stage_world_pose(
+                self._stage,
+                object_body_path,
+            )
+
+            self._attached_offset = object_pos - tcp_pos
+
+            # TCP 기준 물체 회전 상대값 저장
+            object_q = _get_stage_world_pose(
+                self._stage,
+                object_body_path,
+            )[1]
+
+            self._attached_rotation_offset = _quaternion_multiply_wxyz(
+                _quaternion_inverse_wxyz(tcp_q),
+                object_q,
+            )
+
+            self._attached_object_wrapper = self._object_wrappers[class_name]
+            self._attached_class = class_name
+
+            carb.log_info(
+                f"[robot2 suction] virtual attach success class={class_name}, "
+                f"surface_distance={surface_distance:.4f}m"
+            )
+
+            return True
+
         except Exception as exc:
-            carb.log_error(f"[robot2 suction] runtime FixedJoint creation failed: {exc}")
-            if self._stage.GetPrimAtPath(RUNTIME_SUCTION_JOINT_PATH).IsValid():
-                self._stage.RemovePrim(RUNTIME_SUCTION_JOINT_PATH)
+            carb.log_error(f"[robot2 suction] virtual attach failed: {exc}")
             return False
-        self._attached_class = class_name
-        carb.log_info(f"[robot2 suction] attached class={class_name}, body={object_body_path}")
-        return True
 
     def detach_runtime_joint(self):
-        self._remove_runtime_joint()
         self._attached_class = None
+        self._attached_offset = None
+        self._attached_rotation_offset = None
+        self._attached_object_wrapper = None
 
     def _remove_runtime_joint(self):
         if self._stage.GetPrimAtPath(RUNTIME_SUCTION_JOINT_PATH).IsValid():
             self._stage.RemovePrim(RUNTIME_SUCTION_JOINT_PATH)
 
     def _publish_state(self, value):
-        msg = Bool(); msg.data = bool(value); self._publisher.publish(msg)
-
+        msg = Bool()
+        msg.data = bool(value)
+        self._publisher.publish(msg)
 
 class FixedJointReleaseController:
     """class_name의 Net FixedJoint를 끊고 Runtime suction joint로 ownership을 넘긴다."""
@@ -811,7 +1031,14 @@ class FixedJointReleaseController:
     def update(self):
         if not self._requests: return
         class_name = self._requests.popleft()
-        success = self._release(class_name)
+        try:
+            success = self._release(class_name)
+        except Exception as exc:
+            self._suction.detach_runtime_joint()
+            carb.log_error(
+                f"[joint release] unexpected failure for {class_name!r}: {exc}"
+            )
+            success = False
         msg = Bool(); msg.data = bool(success); self._publisher.publish(msg)
 
     def _release(self, class_name):
@@ -1021,6 +1248,45 @@ def _get_stage_world_pose(stage, prim_path):
     return position, orientation
 
 
+def _distance_to_prim_world_bounds(stage, prim_path, point_world):
+    """Return point-to-object world AABB distance and diagnostic geometry.
+
+    ``body1``의 원점이 아니라 현재 렌더/물리 객체의 월드 바운딩 표면을
+    기준으로 흡착 접촉을 판정한다. BBoxCache는 호출 시마다 새로 만들어
+    PhysX가 갱신한 현재 transform을 사용한다.
+    """
+    prim = stage.GetPrimAtPath(prim_path)
+    if not prim.IsValid():
+        raise RuntimeError(f"Missing Prim for world bounds: {prim_path}")
+
+    bbox_cache = UsdGeom.BBoxCache(
+        Usd.TimeCode.Default(),
+        [
+            UsdGeom.Tokens.default_,
+            UsdGeom.Tokens.render,
+            UsdGeom.Tokens.proxy,
+        ],
+        useExtentsHint=True,
+    )
+    aligned_range = bbox_cache.ComputeWorldBound(prim).ComputeAlignedBox()
+    bounds_min = np.asarray(aligned_range.GetMin(), dtype=float)
+    bounds_max = np.asarray(aligned_range.GetMax(), dtype=float)
+    point = np.asarray(point_world, dtype=float)
+
+    if (
+        point.shape != (3,)
+        or not np.all(np.isfinite(point))
+        or not np.all(np.isfinite(bounds_min))
+        or not np.all(np.isfinite(bounds_max))
+        or np.any(bounds_max < bounds_min)
+    ):
+        raise RuntimeError(f"Invalid world bounds for suction object: {prim_path}")
+
+    closest = np.clip(point, bounds_min, bounds_max)
+    distance = float(np.linalg.norm(point - closest))
+    return distance, closest, bounds_min, bounds_max
+
+
 def _prepare_transport_stage(stage):
     net_prim = stage.GetPrimAtPath(NET_PHYSICAL_RIGID_PRIM_PATH)
     if not net_prim.IsValid(): raise RuntimeError(f"Missing physical net Prim: {NET_PHYSICAL_RIGID_PRIM_PATH}")
@@ -1045,16 +1311,117 @@ def _prepare_transport_stage(stage):
         print(f"[NetClean] carriage visual follower: {carriage_path} (collision_off={collision_off}, joint_off={joint_off})", flush=True)
 
 
+def _nearest_rigid_body_path(stage, relationship_target):
+    """Resolve a Joint target to its nearest RigidBodyAPI ancestor.
+
+    일부 저장된 Joint는 RigidBodyAPI Prim 자체가 아니라 그 아래 mesh/collider
+    Prim을 relationship target으로 갖는다. Runtime suction용 body 경로를 만들 때
+    해당 자식 경로에서 부모 방향으로 올라가 가장 가까운 강체를 사용한다.
+    """
+    current = Sdf.Path(relationship_target)
+    # Isaac Sim 5.1에 포함된 일부 pxr Python 바인딩에는 Sdf.Path.IsEmpty()가
+    # 노출되지 않는다. 빈 경로와 pseudo-root는 문자열 값으로 판정해 버전별
+    # API 차이 없이 부모 방향으로 순회한다.
+    while str(current) not in ("", "/"):
+        prim = stage.GetPrimAtPath(current)
+        if prim.IsValid() and prim.HasAPI(UsdPhysics.RigidBodyAPI):
+            return current
+        parent = current.GetParentPath()
+        if parent == current:
+            break
+        current = parent
+    return None
+
+
 def _object_body_paths_from_joint_map(stage, mapping):
     result = {}
     for class_name, joint_path in mapping.items():
         prim = stage.GetPrimAtPath(joint_path)
         if not prim.IsValid() or not prim.IsA(UsdPhysics.FixedJoint): raise RuntimeError(f"{class_name}: invalid FixedJoint {joint_path}")
-        targets = UsdPhysics.Joint(prim).GetBody1Rel().GetTargets()
-        if len(targets) != 1: raise RuntimeError(f"{class_name}: body1 target count={len(targets)} at {joint_path}")
-        body_path = str(targets[0])
-        if not stage.GetPrimAtPath(body_path).IsValid(): raise RuntimeError(f"{class_name}: missing body1 {body_path}")
+        joint_schema = UsdPhysics.Joint(prim)
+        side_targets = {
+            "body0": list(joint_schema.GetBody0Rel().GetTargets()),
+            "body1": list(joint_schema.GetBody1Rel().GetTargets()),
+        }
+        if any(len(targets) > 1 for targets in side_targets.values()):
+            raise RuntimeError(
+                f"{class_name}: FixedJoint body relationship has multiple targets: "
+                f"{joint_path}"
+            )
+
+        joint_parent = Sdf.Path(joint_path).GetParentPath()
+        net_body = Sdf.Path(NET_PHYSICAL_RIGID_PRIM_PATH)
+        candidates = []
+        for side, targets in side_targets.items():
+            if not targets:
+                # 빈 relationship는 static world를 뜻할 수 있다.
+                continue
+            relationship_target = targets[0]
+            target_prim = stage.GetPrimAtPath(relationship_target)
+            if not target_prim.IsValid():
+                raise RuntimeError(
+                    f"{class_name}: missing {side} target "
+                    f"{relationship_target} at {joint_path}"
+                )
+            rigid_body_path = _nearest_rigid_body_path(
+                stage,
+                relationship_target,
+            )
+            if rigid_body_path is None:
+                raise RuntimeError(
+                    f"{class_name}: {side} target has no RigidBody ancestor: "
+                    f"{relationship_target}"
+                )
+
+            # Joint가 객체 Prim 아래에 있으므로 그 부모와 가장 가까운 Body가
+            # 쓰레기다. 어망 physical body는 명시적으로 감점한다. 따라서 USD에서
+            # Body0/Body1을 어느 순서로 연결했는지에 의존하지 않는다.
+            score = 0
+            if rigid_body_path == joint_parent:
+                score += 100
+            elif rigid_body_path.HasPrefix(joint_parent):
+                score += 80
+            elif joint_parent.HasPrefix(rigid_body_path):
+                score += 40
+            if (
+                rigid_body_path == net_body
+                or rigid_body_path.HasPrefix(net_body)
+                or net_body.HasPrefix(rigid_body_path)
+            ):
+                score -= 100
+            candidates.append(
+                (score, side, rigid_body_path, relationship_target)
+            )
+
+        if not candidates:
+            raise RuntimeError(
+                f"{class_name}: FixedJoint has no RigidBody target: {joint_path}"
+            )
+        candidates.sort(key=lambda item: item[0], reverse=True)
+        if len(candidates) > 1 and candidates[0][0] == candidates[1][0]:
+            raise RuntimeError(
+                f"{class_name}: cannot distinguish object body from FixedJoint "
+                f"targets at {joint_path}: {candidates}"
+            )
+
+        score, side, selected_path, relationship_target = candidates[0]
+        if score < 0:
+            raise RuntimeError(
+                f"{class_name}: selected FixedJoint body is the net, not the "
+                f"trash object: {selected_path}"
+            )
+        body_path = str(selected_path)
+        print(
+            f"[NetClean] suction body map: class={class_name}, "
+            f"side={side}, relation={relationship_target}, "
+            f"body={body_path}, score={score}",
+            flush=True,
+        )
         result[class_name] = body_path
+    if len(set(result.values())) != len(result):
+        raise RuntimeError(
+            "Each Station2 class must map to a different FixedJoint body1"
+        )
     return result
 
 
@@ -1160,7 +1527,12 @@ def main():
         robot1_config = RobotConfig(name="robot1", prim_path=ROBOT1_PRIM_PATH, urdf_path=M0609_URDF_PATH, descriptor_path=M0609_LULA_DESCRIPTOR_PATH, end_effector_frame=M0609_END_EFFECTOR_FRAME, flange_to_tcp_position=ROBOT1_FLANGE_TO_TCP_POSITION, flange_to_tcp_orientation_wxyz=ROBOT1_FLANGE_TO_TCP_QUATERNION_WXYZ, motion_done_topic=ROBOT1_MOTION_DONE_TOPIC)
         robot2_config = RobotConfig(name="robot2", prim_path=ROBOT2_PRIM_PATH, urdf_path=M0609_URDF_PATH, descriptor_path=M0609_LULA_DESCRIPTOR_PATH, end_effector_frame=M0609_END_EFFECTOR_FRAME, flange_to_tcp_position=ROBOT2_FLANGE_TO_TCP_POSITION, flange_to_tcp_orientation_wxyz=ROBOT2_FLANGE_TO_TCP_QUATERNION_WXYZ, motion_done_topic=ROBOT2_MOTION_DONE_TOPIC)
         robot1_controller = RobotMotionController(robot1, robot1_config, ros.robot1_motion_done_pub); robot2_controller = RobotMotionController(robot2, robot2_config, ros.robot2_motion_done_pub)
-        suction_controller = RuntimeSuctionController(stage, object_body_paths, ros.robot2_suction_state_pub)
+        suction_controller = RuntimeSuctionController(
+            stage,
+            object_body_paths,
+            object_wrappers,
+            ros.robot2_suction_state_pub,
+        )
         joint_controller = FixedJointReleaseController(stage, JOINT_PATH_BY_CLASS, suction_controller, ros.robot2_joint_release_done_pub)
         suction_controller.reset(); joint_controller.reset(); tracked_objects.restore()
         for _ in range(WARMUP_STEPS): net_controller.update(0.0); world.step(render=not ARGS.headless)

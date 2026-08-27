@@ -55,9 +55,7 @@ CONFIG_READY = True
 
 # 1) 저장한 최종 USD의 절대 경로
 # 예: "/home/yong/netclean/assets/netclean_world.usd"
-USD_PATH = "/home/rokey/isaac_simulation_intergration/project1/simulation_integration_v3.usd"
-
-
+USD_PATH = "/home/rokey/isaac_simulation_intergration/project1/simulation_integration_v4.usd"
 # 2) 월드 안의 필수 Prim 경로
 # Stage 창에서 Prim을 우클릭하여 Copy Prim Path로 복사한다.
 #
@@ -134,7 +132,7 @@ PHYSICS_DT = 1.0 / 60.0
 RENDERING_DT = 1.0 / 60.0
 WARMUP_STEPS = 30
 
-NET_SPEED_MPS = 0.36
+NET_SPEED_MPS = 0.5
 NET_CURRENT_POSE_HZ = 20.0
 READY_PUBLISH_HZ = 1.0
 
@@ -739,18 +737,77 @@ class RuntimeSuctionController:
         if not self._stage.GetPrimAtPath(RUNTIME_ROOT_PRIM_PATH).IsValid():
             self._stage.DefinePrim(RUNTIME_ROOT_PRIM_PATH, "Xform")
         try:
-            body0_pos, body0_q = _get_stage_world_pose(self._stage, ROBOT2_SUCTION_BODY_PRIM_PATH)
-            body1_pos, body1_q = _get_stage_world_pose(self._stage, object_body_path)
+            # Runtime FixedJoint의 두 local frame을 실제 흡착 접촉점인
+            # SuctionTCP의 동일한 World pose에서 계산한다. 물체 Prim 원점을
+            # anchor로 사용하지 않으므로 Joint 생성 순간의 snap/회전을 방지한다.
+            body0_pos, body0_q = _get_stage_world_pose(
+                self._stage,
+                ROBOT2_SUCTION_BODY_PRIM_PATH,
+            )
+            body1_pos, body1_q = _get_stage_world_pose(
+                self._stage,
+                object_body_path,
+            )
+            anchor_pos, anchor_q = _get_stage_world_pose(
+                self._stage,
+                ROBOT2_TCP_PRIM_PATH,
+            )
+
             rotation0 = _quaternion_to_rotation_matrix_wxyz(body0_q)
-            local_pos0 = rotation0.T @ (body1_pos - body0_pos)
-            local_rot0 = _normalize_quaternion_wxyz(_quaternion_multiply_wxyz(_quaternion_inverse_wxyz(body0_q), body1_q), "runtime suction local rotation")
-            joint = UsdPhysics.FixedJoint.Define(self._stage, RUNTIME_SUCTION_JOINT_PATH)
-            joint.CreateBody0Rel().SetTargets([Sdf.Path(ROBOT2_SUCTION_BODY_PRIM_PATH)])
-            joint.CreateBody1Rel().SetTargets([Sdf.Path(object_body_path)])
-            joint.CreateLocalPos0Attr().Set(Gf.Vec3f(*[float(v) for v in local_pos0]))
-            joint.CreateLocalRot0Attr().Set(Gf.Quatf(float(local_rot0[0]), Gf.Vec3f(float(local_rot0[1]), float(local_rot0[2]), float(local_rot0[3]))))
-            joint.CreateLocalPos1Attr().Set(Gf.Vec3f(0.0, 0.0, 0.0))
-            joint.CreateLocalRot1Attr().Set(Gf.Quatf(1.0, Gf.Vec3f(0.0, 0.0, 0.0)))
+            rotation1 = _quaternion_to_rotation_matrix_wxyz(body1_q)
+            local_pos0 = rotation0.T @ (anchor_pos - body0_pos)
+            local_pos1 = rotation1.T @ (anchor_pos - body1_pos)
+            local_rot0 = _normalize_quaternion_wxyz(
+                _quaternion_multiply_wxyz(
+                    _quaternion_inverse_wxyz(body0_q),
+                    anchor_q,
+                ),
+                "runtime suction local rotation0",
+            )
+            local_rot1 = _normalize_quaternion_wxyz(
+                _quaternion_multiply_wxyz(
+                    _quaternion_inverse_wxyz(body1_q),
+                    anchor_q,
+                ),
+                "runtime suction local rotation1",
+            )
+
+            joint = UsdPhysics.FixedJoint.Define(
+                self._stage,
+                RUNTIME_SUCTION_JOINT_PATH,
+            )
+            joint.CreateBody0Rel().SetTargets([
+                Sdf.Path(ROBOT2_SUCTION_BODY_PRIM_PATH)
+            ])
+            joint.CreateBody1Rel().SetTargets([
+                Sdf.Path(object_body_path)
+            ])
+            joint.CreateLocalPos0Attr().Set(
+                Gf.Vec3f(*[float(v) for v in local_pos0])
+            )
+            joint.CreateLocalRot0Attr().Set(
+                Gf.Quatf(
+                    float(local_rot0[0]),
+                    Gf.Vec3f(
+                        float(local_rot0[1]),
+                        float(local_rot0[2]),
+                        float(local_rot0[3]),
+                    ),
+                )
+            )
+            joint.CreateLocalPos1Attr().Set(
+                Gf.Vec3f(*[float(v) for v in local_pos1])
+            )
+            joint.CreateLocalRot1Attr().Set(
+                Gf.Quatf(
+                    float(local_rot1[0]),
+                    Gf.Vec3f(
+                        float(local_rot1[1]),
+                        float(local_rot1[2]),
+                        float(local_rot1[3]),
+                    ),
+                )
+            )
             joint.CreateJointEnabledAttr().Set(True)
         except Exception as exc:
             carb.log_error(f"[robot2 suction] runtime FixedJoint creation failed: {exc}")
