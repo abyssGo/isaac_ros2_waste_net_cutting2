@@ -53,9 +53,27 @@ def git_output(*args: str) -> bytes:
     ).stdout
 
 
-def tracked_paths() -> list[PurePosixPath]:
+def git_tracked_paths() -> list[PurePosixPath]:
     values = git_output("ls-files", "-z").split(b"\0")
     return [PurePosixPath(value.decode("utf-8", "surrogateescape")) for value in values if value]
+
+
+def submission_paths() -> tuple[list[PurePosixPath], bool]:
+    """Return Git-tracked paths, or all files when run from an exported ZIP."""
+    in_git_repository = subprocess.run(
+        ["git", "-C", str(ROOT), "rev-parse", "--is-inside-work-tree"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    ).returncode == 0
+    if in_git_repository:
+        return git_tracked_paths(), True
+
+    paths = [
+        PurePosixPath(path.relative_to(ROOT).as_posix())
+        for path in ROOT.rglob("*")
+        if path.is_file() and ".git" not in path.relative_to(ROOT).parts
+    ]
+    return sorted(paths, key=lambda item: item.as_posix()), False
 
 
 def main() -> int:
@@ -63,7 +81,7 @@ def main() -> int:
     warnings: list[str] = []
 
     try:
-        tracked = tracked_paths()
+        tracked, in_git_repository = submission_paths()
     except (OSError, subprocess.CalledProcessError) as exc:
         print(f"ERROR: Git tracked-file 목록을 읽지 못했습니다: {exc}", file=sys.stderr)
         return 2
@@ -137,16 +155,18 @@ def main() -> int:
                 elif relative not in tracked_set:
                     errors.append(f"URDF mesh가 Git에 포함되지 않음: {relative}")
 
-    dirty = subprocess.run(
-        ["git", "-C", str(ROOT), "status", "--porcelain"],
-        check=True,
-        stdout=subprocess.PIPE,
-        text=True,
-    ).stdout.strip()
-    if dirty:
-        warnings.append("커밋되지 않은 변경사항이 있습니다. 제출 ZIP은 커밋 후 생성하세요.")
+    if in_git_repository:
+        dirty = subprocess.run(
+            ["git", "-C", str(ROOT), "status", "--porcelain"],
+            check=True,
+            stdout=subprocess.PIPE,
+            text=True,
+        ).stdout.strip()
+        if dirty:
+            warnings.append("커밋되지 않은 변경사항이 있습니다. 제출 ZIP은 커밋 후 생성하세요.")
 
-    print(f"Git 추적 파일: {len(tracked)}개, 작업 트리 크기: {tracked_bytes / 1048576:.1f}MiB")
+    source = "Git 추적 파일" if in_git_repository else "압축 해제 파일"
+    print(f"{source}: {len(tracked)}개, 검사 크기: {tracked_bytes / 1048576:.1f}MiB")
     for warning in warnings:
         print(f"WARNING: {warning}")
     for error in errors:
