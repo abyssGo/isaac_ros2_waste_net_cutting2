@@ -56,6 +56,11 @@ wandb/
 # Local handoff archives and ad-hoc backup copies
 # ============================================================
 *.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+*.tgz
 *.save
 *.before_*
 *.bak_before_*
