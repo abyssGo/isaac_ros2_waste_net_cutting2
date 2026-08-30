@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>nc_vision_debug</name>
-  <version>0.5.0</version>
+  <version>0.7.0</version>
   <description>NetClean Vision 1 and Vision 2 debug popup nodes.</description>
 
   <maintainer email="rokey@example.com">NetClean Team</maintainer>

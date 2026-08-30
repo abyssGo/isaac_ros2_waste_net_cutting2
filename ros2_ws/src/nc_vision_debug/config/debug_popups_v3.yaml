@@ -5,7 +5,7 @@ vision1_debug_popup:
     status_topic: "/vision1/debug/status"
     # Keep the dashboard separate from nc_vision's annotated debug image.
     output_topic: "/vision1/debug_dashboard"
-    window_name: "NetClean Vision 1 - Cutting Debug"
+    window_name: "NetClean Vision 1 V3 - Cutting Debug"
     enable_window: true
     # Fits beside a terminal on a 1920x1080 desktop.
     window_width: 1280
@@ -19,7 +19,8 @@ vision1_debug_popup:
     iou_threshold: 0.45
     max_detections: 3
     expected_classes: [plastic_bottle, can, buoy]
-    live_detection_interval_sec: 0.10
+    # Raw UI stays at 20 FPS; YOLO boxes refresh at 5 Hz to limit GPU load.
+    live_detection_interval_sec: 0.20
     # ROI pixel coordinates [x1, y1, x2, y2]. [0,0,0,0] disables the line.
     roi: [0, 0, 0, 0]
     # Fill these using the labelled YOLO validation result. -1 means N/A.
@@ -35,7 +36,7 @@ vision2_debug_popup:
     status_topic: "/vision2/debug/status"
     # Keep the dashboard separate from nc_vision's annotated debug image.
     output_topic: "/vision2/debug_dashboard"
-    window_name: "NetClean Vision 2 - Removal Debug"
+    window_name: "NetClean Vision 2 V3 - Removal Debug"
     enable_window: true
     window_width: 1280
     window_height: 800
@@ -48,7 +49,8 @@ vision2_debug_popup:
     iou_threshold: 0.45
     max_detections: 3
     expected_classes: [plastic_bottle, can, buoy]
-    live_detection_interval_sec: 0.10
+    # Raw UI stays at 20 FPS; YOLO boxes refresh at 5 Hz to limit GPU load.
+    live_detection_interval_sec: 0.20
     roi: [0, 0, 0, 0]
     validation_precision: -1.0
     validation_recall: -1.0
