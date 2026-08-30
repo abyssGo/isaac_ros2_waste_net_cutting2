@@ -9,6 +9,13 @@ from launch_ros.actions import Node
 
 def generate_launch_description() -> LaunchDescription:
     config_dir = Path(get_package_share_directory("nc_bringup")) / "config"
+    model_path = (
+        Path(get_package_share_directory("nc_vision"))
+        / "models"
+        / "netclean_yolo11n"
+        / "weights"
+        / "best.pt"
+    )
     return LaunchDescription(
         [
             Node(
@@ -17,7 +24,10 @@ def generate_launch_description() -> LaunchDescription:
                 # Keep the public ROS node name and parameter namespace stable.
                 name="vision1_node",
                 output="screen",
-                parameters=[str(config_dir / "vision1_v2.yaml")],
+                parameters=[
+                    str(config_dir / "vision1_v2.yaml"),
+                    {"model_path": str(model_path)},
+                ],
             ),
             Node(
                 package="nc_vision",
@@ -25,7 +35,10 @@ def generate_launch_description() -> LaunchDescription:
                 # Robot/control integrations continue to see /vision2_node.
                 name="vision2_node",
                 output="screen",
-                parameters=[str(config_dir / "vision2_v2.yaml")],
+                parameters=[
+                    str(config_dir / "vision2_v2.yaml"),
+                    {"model_path": str(model_path)},
+                ],
             ),
         ]
     )

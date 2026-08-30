@@ -1,0 +1,1270 @@
+/*****************************************************************************
+*     Copyright 2023 NVIDIA Corporation. All rights reserved.
+******************************************************************************
+
+ MDL MATERIALS ARE PROVIDED PURSUANT TO AN END USER LICENSE  AGREEMENT,
+ WHICH WAS ACCEPTED IN ORDER TO GAIN ACCESS TO THIS FILE.  IN PARTICULAR, 
+ THE MDL MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
+ MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF 
+ COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL NVIDIA
+ CORPORATION BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, INCLUDING
+ ANY GENERAL, SPECIAL,  INDIRECT, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, 
+ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF 
+ THE USE OR INABILITY TO USE THE MDL MATERIALS OR FROM OTHER DEALINGS IN 
+ THE MDL MATERIALS.
+*/
+
+mdl 1.4;
+
+
+import ::state::*;
+import ::base::*;
+import ::tex::*;
+import ::anno::*;
+import ::nvidia::core_definitions::*;
+
+
+const string COPYRIGHT = 
+" Copyright 2023 NVIDIA Corporation. All rights reserved.\n"
+" MDL MATERIALS ARE PROVIDED PURSUANT TO AN END USER LICENSE  AGREEMENT,\n"
+" WHICH WAS ACCEPTED IN ORDER TO GAIN ACCESS TO THIS FILE.  IN PARTICULAR,\n" 
+" THE MDL MATERIALS ARE PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n"
+" EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF\n"
+" MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF\n" 
+" COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL NVIDIA\n"
+" CORPORATION BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, INCLUDING ANY\n"
+" GENERAL, SPECIAL,  INDIRECT, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, WHETHER IN\n"
+" AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF THE USE OR\n"
+" INABILITY TO USE THE MDL MATERIALS OR FROM OTHER DEALINGS IN THE MDL MATERIALS.\n";
+
+
+export material Concrete_Precast(
+    
+        color concrete_color = color ( 0.57f, 0.57f, 0.57f )
+        [[
+            ::anno::display_name("Concrete Color"),
+            ::anno::description ( "Choose the color of the Concrete."),
+            ::anno::in_group("Appearance")
+        ]],
+        float grunge_amount =  0.20f
+        [[
+            ::anno::display_name("Grunge Amount"),
+            ::anno::description("higher values results in more noise difference in the color of the concrete."),
+            ::anno::hard_range(0.0,1.0),
+            ::anno::in_group("Appearance")
+        ]],
+        float reflection_roughness =  0.5f
+        [[
+            ::anno::display_name("Roughness"),
+            ::anno::description("Higher roughness values lead to bigger highlights and blurrier reflections."),
+            ::anno::hard_range(0.0,1.0),
+            ::anno::in_group("Appearance")
+        ]],
+        uniform float bump_strength =  .5f
+        [[
+            ::anno::display_name("Bump Strength"),
+            ::anno::description("Specifies the strength of the bump."),
+            ::anno::in_group("Appearance")
+        ]],
+        uniform float2 texture_translate =  float2 ( 0.f)
+        [[
+            ::anno::display_name("Translate"),
+            ::anno::description("Controls the position of the texture."),
+            ::anno::in_group("Transform")
+        ]],
+        uniform float texture_rotate =  0.f
+        [[
+            ::anno::display_name("Rotate"),
+            ::anno::description("Rotate angle of the texture in degrees."),
+            ::anno::in_group("Transform")
+        ]],
+        uniform float2 texture_scale =  float2 ( 1.f , 1.f)
+        [[
+            ::anno::display_name("Scale"),
+            ::anno::description("Larger numbers increase the texture size."),
+			::nvidia::core_definitions::dimension(float2(1.0f, 1.0f)),
+            ::anno::in_group("Transform")
+        ]],
+        uniform float ior =  1.5f
+        [[
+            ::anno::display_name("IOR"),
+            ::anno::description("Index of refraction."),
+            ::anno::soft_range(1.0,4.0),
+            ::anno::in_group("Advanced")
+        ]],
+        uniform int uv_space_index = 0
+        [[
+            ::anno::display_name("UV Space Index"),
+            ::anno::description("UV space index."),
+            ::anno::hard_range(0,3),
+            ::anno::in_group("Advanced")
+        ]])
+    [[
+    ::anno::display_name("Concrete Precast - White"),
+    ::anno::description("A material for (pre)cast concrete formwork panels that have holes as part of the manufacturing process"),
+    ::anno::author("NVIDIA vMaterials"),
+    ::anno::copyright_notice(COPYRIGHT),
+	::anno::thumbnail("./.thumbs/Concrete_Precast.concrete_precast_gray.png"),
+	::anno::key_words(string[]("floor", "cast", "concrete", "precast", "construction", "cement", "white", "unfinished", "rough"))
+    ]]= 
+    ::nvidia::core_definitions::flex_material_v2(
+        base_color:  ::nvidia::core_definitions::blend_colors(
+                color_1: ::nvidia::core_definitions::blend_colors(
+                    color_1: concrete_color,
+                color_2: ::nvidia::core_definitions::file_texture(
+                    texture: texture_2d ( "./textures/precastconcrete_diff.png" , ::tex::gamma_srgb) ,
+                    mono_source:  ::base::mono_average,
+                    brightness:  1.f,
+                    contrast:  1.f,
+                    scaling:  0.5f/ texture_scale,
+                    translation:  texture_translate,
+                    rotation:  texture_rotate,
+                    clip:  false,
+                    texture_space:  uv_space_index,
+                    invert:  false).tint,
+                mode: ::base::color_layer_overlay,
+                weight: 1.0f ).tint,
+            color_2:  ::nvidia::core_definitions::file_texture(
+                texture: texture_2d ( "./textures/precastconcrete_grunge_mask.png" , ::tex::gamma_srgb) ,
+                mono_source:  ::base::mono_average,
+                brightness:  1.f,
+                contrast:  1.f,
+                scaling:  0.5f/ texture_scale,
+                translation:  texture_translate,
+                rotation:  texture_rotate,
+                clip:  false,
+                texture_space:  uv_space_index,
+                invert:  false).tint,
+            mode: ::base::color_layer_multiply,
+            weight: grunge_amount ).tint,
+        diffuse_roughness:  0.f,
+        is_metal:  false,
+        reflectivity: 1.0f,
+        reflection_roughness:  ::nvidia::core_definitions::blend_colors(
+            color_1:  ::nvidia::core_definitions::file_texture(
+                texture: texture_2d ( "./textures/precastconcrete_rough.png" , ::tex::gamma_srgb) ,
+                mono_source:  ::base::mono_average,
+                brightness:  1.f,
+                contrast:  1.f,
+                scaling:  0.5f/ texture_scale,
+                translation:  texture_translate,
+                rotation:  texture_rotate,
+                clip:  false,
+                texture_space:  uv_space_index,
+                invert:  false).tint,
+            color_2: color ( reflection_roughness ),
+            mode: ::base::color_layer_overlay,
+            weight: 1.0f ).mono,
+        anisotropy:  0.f,
+        anisotropy_rotation:  0.f,
+        transparency:  0.f,
+        transmission_color:  color ( 1.f , 1.f , 1.f),
+        volume_color:  color ( 1.f , 1.f , 1.f),
+        transmission_roughness:  0.f,
+        base_thickness:  0.1f,
+        ior:  ior,
+        thin_walled:  false,
+        normal:  ::nvidia::core_definitions::normalmap_texture(
+            texture:  texture_2d ( "./textures/precastconcrete_norm.jpg" , ::tex::gamma_linear),
+            scaling: 0.5f/ texture_scale,
+            translation:  texture_translate,
+            rotation:  texture_rotate,
+            clip:  false,
+            factor: bump_strength * 0.20f,
+            texture_space:  uv_space_index));
+
+
+
+export material concrete_precast_light_gray(
+    
+        color concrete_color = color ( 0.68f , 0.68f , 0.68f )
+        [[
+            ::anno::display_name("Concrete Color"),
+            ::anno::description ( "Choose the color of the Concrete."),
+            ::anno::in_group("Appearance")
+        ]],
+        float grunge_amount =  0.40f
+        [[
+            ::anno::display_name("Grunge Amount"),
+            ::anno::description("higher values results in more noise difference in the color of the concrete."),
+            ::anno::hard_range(0.0,1.0),
+            ::anno::in_group("Appearance")
+        ]],
+        float reflection_roughness =  0.15f
+        [[
+            ::anno::display_name("Roughness"),
+            ::anno::description("Higher roughness values lead to bigger highlights and blurrier reflections."),
+            ::anno::hard_range(0.0,1.0),
+            ::anno::in_group("Appearance")
+        ]],
+        uniform float bump_strength =  1.f
+        [[
+            ::anno::display_name("Bump Strength"),
+            ::anno::description("Specifies the strength of the bump."),
+            ::anno::in_group("Appearance")
+        ]],
+        uniform float2 texture_translate =  float2 ( 0.f)
+        [[
+            ::anno::display_name("Translate"),
+            ::anno::description("Controls the position of the texture."),
+            ::anno::in_group("Transform")
+        ]],
+        uniform float texture_rotate =  0.f
+        [[
+            ::anno::display_name("Rotate"),
+            ::anno::description("Rotate angle of the texture in degrees."),
+            ::anno::in_group("Transform")
+        ]],
+        uniform float2 texture_scale =  float2 ( 1.f , 1.f)
+        [[
+            ::anno::display_name("Scale"),
+            ::anno::description("Larger numbers increase the texture size."),
+            ::anno::in_group("Transform"),
+			::nvidia::core_definitions::dimension(float2(1.0f, 1.0f))
+        ]],
+        uniform float ior =  1.5f
+        [[
+            ::anno::display_name("IOR"),
+            ::anno::description("Index of refraction."),
+            ::anno::soft_range(1.0,4.0),
+            ::anno::in_group("Advanced")
+        ]],
+        uniform int uv_space_index = 0
+        [[
+            ::anno::display_name("UV Space Index"),
+            ::anno::description("UV space index."),
+            ::anno::hard_range(0,3),
+            ::anno::in_group("Advanced")
+        ]])
+    [[
+		::anno::display_name("Concrete Precast - Light Gray"),
+		::anno::description("A material for (pre)cast concrete formwork panels that have holes as part of the manufacturing process"),
+		::anno::author("NVIDIA vMaterials"),
+		::anno::copyright_notice(COPYRIGHT),
+		::anno::thumbnail("./.thumbs/Concrete_Precast.concrete_precast_light_gray.png"),
+		::anno::key_words(string[]("floor", "cast", "concrete", "precast", "construction", "cement", "gray", "light gray", "light", "unfinished", "rough"))
+    ]]= 
+    ::nvidia::core_definitions::flex_material_v2(
+        base_color:  ::nvidia::core_definitions::blend_colors(
+                color_1: ::nvidia::core_definitions::blend_colors(
+                    color_1: concrete_color,
+                color_2: ::nvidia::core_definitions::file_texture(
+                    texture: texture_2d ( "./textures/precastconcrete_diff.png" , ::tex::gamma_srgb) ,
+                    mono_source:  ::base::mono_average,
+                    brightness:  1.f,
+                    contrast:  1.f,
+                    scaling:  0.5f/ texture_scale,
+                    translation:  texture_translate,
+                    rotation:  texture_rotate,
+                    clip:  false,
+                    texture_space:  uv_space_index,
+                    invert:  false).tint,
+                mode: ::base::color_layer_overlay,
+                weight: 1.0f ).tint,
+            color_2:  ::nvidia::core_definitions::file_texture(
+                texture: texture_2d ( "./textures/precastconcrete_grunge_mask.png" , ::tex::gamma_srgb) ,
+                mono_source:  ::base::mono_average,
+                brightness:  1.f,
+                contrast:  1.f,
+                scaling:  0.5f/ texture_scale,
+                translation:  texture_translate,
+                rotation:  texture_rotate,
+                clip:  false,
+                texture_space:  uv_space_index,
+                invert:  false).tint,
+            mode: ::base::color_layer_multiply,
+            weight: grunge_amount ).tint,
+        diffuse_roughness:  0.f,
+        is_metal:  false,
+        reflectivity: 1.0f,
+        reflection_roughness:  ::nvidia::core_definitions::blend_colors(
+            color_1: ::nvidia::core_definitions::file_texture(
+                texture: texture_2d ( "./textures/precastconcrete_rough.png" , ::tex::gamma_srgb) ,
+                mono_source:  ::base::mono_average,
+                brightness:  1.f,
+                contrast:  1.f,
+                scaling:  0.5f/ texture_scale,
+                translation:  texture_translate,
+                rotation:  texture_rotate,
+                clip:  false,
+                texture_space:  uv_space_index,
+                invert:  false).tint,
+            color_2: color (reflection_roughness),
+            mode: ::base::color_layer_overlay,
+            weight: 1.0f ).mono,
+        anisotropy:  0.f,
+        anisotropy_rotation:  0.f,
+        transparency:  0.f,
+        transmission_color:  color ( 1.f , 1.f , 1.f),
+        volume_color:  color ( 1.f , 1.f , 1.f),
+        transmission_roughness:  0.f,
+        base_thickness:  0.1f,
+        ior:  ior,
+        thin_walled:  false,
+        normal:  ::nvidia::core_definitions::normalmap_texture(
+            texture:  texture_2d ( "./textures/precastconcrete_norm.jpg" , ::tex::gamma_linear),
+            scaling: 0.5f/ texture_scale,
+            translation:  texture_translate,
+            rotation:  texture_rotate,
+            clip:  false,
+            factor: bump_strength * 0.20f,
+            texture_space:  uv_space_index));
+
+
+export material concrete_precast_ivory(
+    
+        color concrete_color = color ( 0.883f , 0.851f , 0.797f )
+        [[
+            ::anno::display_name("Concrete Color"),
+            ::anno::description ( "Choose the color of the Concrete."),
+            ::anno::in_group("Appearance")
+        ]],
+        float grunge_amount =  0.30f
+        [[
+            ::anno::display_name("Grunge Amount"),
+            ::anno::description("higher values results in more noise difference in the color of the concrete."),
+            ::anno::hard_range(0.0,1.0),
+            ::anno::in_group("Appearance")
+        ]],
+        float reflection_roughness =  0.15f
+        [[
+            ::anno::display_name("Roughness"),
+            ::anno::description("Higher roughness values lead to bigger highlights and blurrier reflections."),
+            ::anno::hard_range(0.0,1.0),
+            ::anno::in_group("Appearance")
+        ]],
+        uniform float bump_strength =  1.f
+        [[
+            ::anno::display_name("Bump Strength"),
+            ::anno::description("Specifies the strength of the bump."),
+            ::anno::in_group("Appearance")
+        ]],
+        uniform float2 texture_translate =  float2 ( 0.f)
+        [[
+            ::anno::display_name("Translate"),
+            ::anno::description("Controls the position of the texture."),
+            ::anno::in_group("Transform")
+        ]],
+        uniform float texture_rotate =  0.f
+        [[
+            ::anno::display_name("Rotate"),
+            ::anno::description("Rotate angle of the texture in degrees."),
+            ::anno::in_group("Transform")
+        ]],
+        uniform float2 texture_scale =  float2 ( 1.f , 1.f)
+        [[
+            ::anno::display_name("Scale"),
+            ::anno::description("Larger numbers increase the texture size."),
+            ::anno::in_group("Transform"),
+			::nvidia::core_definitions::dimension(float2(1.0f, 1.0f))
+        ]],
+        uniform float ior =  1.5f
+        [[
+            ::anno::display_name("IOR"),
+            ::anno::description("Index of refraction."),
+            ::anno::soft_range(1.0,4.0),
+            ::anno::in_group("Advanced")
+        ]],
+        uniform int uv_space_index = 0
+        [[
+            ::anno::display_name("UV Space Index"),
+            ::anno::description("UV space index."),
+            ::anno::hard_range(0,3),
+            ::anno::in_group("Advanced")
+        ]])
+    [[
+		::anno::display_name("Concrete Precast - Ivory"),
+		::anno::description("A material for (pre)cast concrete formwork panels that have holes as part of the manufacturing process"),
+		::anno::author("NVIDIA vMaterials"),
+		::anno::copyright_notice(COPYRIGHT),
+		::anno::thumbnail("./.thumbs/Concrete_Precast.concrete_precast_ivory.png"),
+		::anno::key_words(string[]("floor", "cast", "concrete", "precast", "construction", "cement", "white", "ivory", "unfinished", "rough"))
+    ]]= 
+    ::nvidia::core_definitions::flex_material_v2(
+        base_color:  ::nvidia::core_definitions::blend_colors(
+                color_1: ::nvidia::core_definitions::blend_colors(
+                    color_1: concrete_color,
+                color_2: ::nvidia::core_definitions::file_texture(
+                    texture: texture_2d ( "./textures/precastconcrete_diff.png" , ::tex::gamma_srgb) ,
+                    mono_source:  ::base::mono_average,
+                    brightness:  1.f,
+                    contrast:  1.f,
+                    scaling:  0.5f/ texture_scale,
+                    translation:  texture_translate,
+                    rotation:  texture_rotate,
+                    clip:  false,
+                    texture_space:  uv_space_index,
+                    invert:  false).tint,
+                mode: ::base::color_layer_overlay,
+                weight: 1.0f ).tint,
+            color_2:  ::nvidia::core_definitions::file_texture(
+                texture: texture_2d ( "./textures/precastconcrete_grunge_mask.png" , ::tex::gamma_srgb) ,
+                mono_source:  ::base::mono_average,
+                brightness:  1.f,
+                contrast:  1.f,
+                scaling:  0.5f/ texture_scale,
+                translation:  texture_translate,
+                rotation:  texture_rotate,
+                clip:  false,
+                texture_space:  uv_space_index,
+                invert:  false).tint,
+            mode: ::base::color_layer_multiply,
+            weight: grunge_amount ).tint,
+        diffuse_roughness:  0.f,
+        is_metal:  false,
+        reflectivity: 1.0f,
+        reflection_roughness:  ::nvidia::core_definitions::blend_colors(
+            color_1: ::nvidia::core_definitions::file_texture(
+                texture: texture_2d ( "./textures/precastconcrete_rough.png" , ::tex::gamma_srgb) ,
+                mono_source:  ::base::mono_average,
+                brightness:  1.f,
+                contrast:  1.f,
+                scaling:  0.5f/ texture_scale,
+                translation:  texture_translate,
+                rotation:  texture_rotate,
+                clip:  false,
+                texture_space:  uv_space_index,
+                invert:  false).tint,
+            color_2: color (reflection_roughness),
+            mode: ::base::color_layer_overlay,
+            weight: 1.0f ).mono,
+        anisotropy:  0.f,
+        anisotropy_rotation:  0.f,
+        transparency:  0.f,
+        transmission_color:  color ( 1.f , 1.f , 1.f),
+        volume_color:  color ( 1.f , 1.f , 1.f),
+        transmission_roughness:  0.f,
+        base_thickness:  0.1f,
+        ior:  ior,
+        thin_walled:  false,
+        normal:  ::nvidia::core_definitions::normalmap_texture(
+            texture:  texture_2d ( "./textures/precastconcrete_norm.jpg" , ::tex::gamma_linear),
+            scaling: 0.5f/ texture_scale,
+            translation:  texture_translate,
+            rotation:  texture_rotate,
+            clip:  false,
+            factor: bump_strength * 0.20f,
+            texture_space:  uv_space_index));
+
+
+
+export material concrete_precast_light_warm_gray(
+    
+        color concrete_color = color (0.932f , 0.859f , 0.797f )
+        [[
+            ::anno::display_name("Concrete Color"),
+            ::anno::description ( "Choose the color of the Concrete."),
+            ::anno::in_group("Appearance")
+        ]],
+        float grunge_amount =  0.55f
+        [[
+            ::anno::display_name("Grunge Amount"),
+            ::anno::description("higher values results in more noise difference in the color of the concrete."),
+            ::anno::hard_range(0.0,1.0),
+            ::anno::in_group("Appearance")
+        ]],
+        float reflection_roughness =  0.15f
+        [[
+            ::anno::display_name("Roughness"),
+            ::anno::description("Higher roughness values lead to bigger highlights and blurrier reflections."),
+            ::anno::hard_range(0.0,1.0),
+            ::anno::in_group("Appearance")
+        ]],
+        uniform float bump_strength =  1.f
+        [[
+            ::anno::display_name("Bump Strength"),
+            ::anno::description("Specifies the strength of the bump."),
+            ::anno::in_group("Appearance")
+        ]],
+        uniform float2 texture_translate =  float2 ( 0.f)
+        [[
+            ::anno::display_name("Translate"),
+            ::anno::description("Controls the position of the texture."),
+            ::anno::in_group("Transform")
+        ]],
+        uniform float texture_rotate =  0.f
+        [[
+            ::anno::display_name("Rotate"),
+            ::anno::description("Rotate angle of the texture in degrees."),
+            ::anno::in_group("Transform")
+        ]],
+        uniform float2 texture_scale =  float2 ( 1.f , 1.f)
+        [[
+            ::anno::display_name("Scale"),
+            ::anno::description("Larger numbers increase the texture size."),
+            ::anno::in_group("Transform"),
+			::nvidia::core_definitions::dimension(float2(1.0f, 1.0f))
+        ]],
+        uniform float ior =  1.5f
+        [[
+            ::anno::display_name("IOR"),
+            ::anno::description("Index of refraction."),
+            ::anno::soft_range(1.0,4.0),
+            ::anno::in_group("Advanced")
+        ]],
+        uniform int uv_space_index = 0
+        [[
+            ::anno::display_name("UV Space Index"),
+            ::anno::description("UV space index."),
+            ::anno::hard_range(0,3),
+            ::anno::in_group("Advanced")
+        ]])
+    [[
+        ::anno::display_name("Concrete Precast - Light Warm Gray"),
+		::anno::description("A material for (pre)cast concrete formwork panels that have holes as part of the manufacturing process"),
+		::anno::author("NVIDIA vMaterials"),
+		::anno::copyright_notice(COPYRIGHT),
+		::anno::thumbnail("./.thumbs/Concrete_Precast.concrete_precast_light_warm_gray.png"),
+		::anno::key_words(string[]("floor", "cast", "concrete", "precast", "construction", "cement", "warm", "gray", "light gray", "unfinished", "rough"))
+    ]]= 
+    ::nvidia::core_definitions::flex_material_v2(
+        base_color:  ::nvidia::core_definitions::blend_colors(
+                color_1: ::nvidia::core_definitions::blend_colors(
+                    color_1: concrete_color,
+                color_2: ::nvidia::core_definitions::file_texture(
+                    texture: texture_2d ( "./textures/precastconcrete_diff.png" , ::tex::gamma_srgb) ,
+                    mono_source:  ::base::mono_average,
+                    brightness:  1.f,
+                    contrast:  1.f,
+                    scaling:  0.5f/ texture_scale,
+                    translation:  texture_translate,
+                    rotation:  texture_rotate,
+                    clip:  false,
+                    texture_space:  uv_space_index,
+                    invert:  false).tint,
+                mode: ::base::color_layer_overlay,
+                weight: 1.0f ).tint,
+            color_2:  ::nvidia::core_definitions::file_texture(
+                texture: texture_2d ( "./textures/precastconcrete_grunge_mask.png" , ::tex::gamma_srgb) ,
+                mono_source:  ::base::mono_average,
+                brightness:  1.f,
+                contrast:  1.f,
+                scaling:  0.5f/ texture_scale,
+                translation:  texture_translate,
+                rotation:  texture_rotate,
+                clip:  false,
+                texture_space:  uv_space_index,
+                invert:  false).tint,
+            mode: ::base::color_layer_multiply,
+            weight: grunge_amount ).tint,
+        diffuse_roughness:  0.f,
+        is_metal:  false,
+        reflectivity: 1.0f,
+        reflection_roughness:  ::nvidia::core_definitions::blend_colors(
+            color_1: ::nvidia::core_definitions::file_texture(
+                texture: texture_2d ( "./textures/precastconcrete_rough.png" , ::tex::gamma_srgb) ,
+                mono_source:  ::base::mono_average,
+                brightness:  1.f,
+                contrast:  1.f,
+                scaling:  0.5f/ texture_scale,
+                translation:  texture_translate,
+                rotation:  texture_rotate,
+                clip:  false,
+                texture_space:  uv_space_index,
+                invert:  false).tint,
+            color_2: color (reflection_roughness),
+            mode: ::base::color_layer_overlay,
+            weight: 1.0f ).mono,
+        anisotropy:  0.f,
+        anisotropy_rotation:  0.f,
+        transparency:  0.f,
+        transmission_color:  color ( 1.f , 1.f , 1.f),
+        volume_color:  color ( 1.f , 1.f , 1.f),
+        transmission_roughness:  0.f,
+        base_thickness:  0.1f,
+        ior:  ior,
+        thin_walled:  false,
+        normal:  ::nvidia::core_definitions::normalmap_texture(
+            texture:  texture_2d ( "./textures/precastconcrete_norm.jpg" , ::tex::gamma_linear),
+            scaling: 0.5f/ texture_scale,
+            translation:  texture_translate,
+            rotation:  texture_rotate,
+            clip:  false,
+            factor: bump_strength * 0.20f,
+            texture_space:  uv_space_index));
+
+
+
+export material concrete_precast_warm_gray(
+    
+        color concrete_color = color (0.932f , 0.859f , 0.797f )
+        [[
+            ::anno::display_name("Concrete Color"),
+            ::anno::description ( "Choose the color of the Concrete."),
+            ::anno::in_group("Appearance")
+        ]],
+        float grunge_amount =  0.55f
+        [[
+            ::anno::display_name("Grunge Amount"),
+            ::anno::description("higher values results in more noise difference in the color of the concrete."),
+            ::anno::hard_range(0.0,1.0),
+            ::anno::in_group("Appearance")
+        ]],
+        float reflection_roughness =  0.15f
+        [[
+            ::anno::display_name("Roughness"),
+            ::anno::description("Higher roughness values lead to bigger highlights and blurrier reflections."),
+            ::anno::hard_range(0.0,1.0),
+            ::anno::in_group("Appearance")
+        ]],
+        uniform float bump_strength =  1.f
+        [[
+            ::anno::display_name("Bump Strength"),
+            ::anno::description("Specifies the strength of the bump."),
+            ::anno::in_group("Appearance")
+        ]],
+        uniform float2 texture_translate =  float2 ( 0.f)
+        [[
+            ::anno::display_name("Translate"),
+            ::anno::description("Controls the position of the texture."),
+            ::anno::in_group("Transform")
+        ]],
+        uniform float texture_rotate =  0.f
+        [[
+            ::anno::display_name("Rotate"),
+            ::anno::description("Rotate angle of the texture in degrees."),
+            ::anno::in_group("Transform")
+        ]],
+        uniform float2 texture_scale =  float2 ( 1.f , 1.f)
+        [[
+            ::anno::display_name("Scale"),
+            ::anno::description("Larger numbers increase the texture size."),
+            ::anno::in_group("Transform"),
+			::nvidia::core_definitions::dimension(float2(1.0f, 1.0f))
+        ]],
+        uniform float ior =  1.5f
+        [[
+            ::anno::display_name("IOR"),
+            ::anno::description("Index of refraction."),
+            ::anno::soft_range(1.0,4.0),
+            ::anno::in_group("Advanced")
+        ]],
+        uniform int uv_space_index = 0
+        [[
+            ::anno::display_name("UV Space Index"),
+            ::anno::description("UV space index."),
+            ::anno::hard_range(0,3),
+            ::anno::in_group("Advanced")
+        ]])
+    [[
+        ::anno::display_name("Concrete Precast - Warm Gray"),
+		::anno::description("A material for (pre)cast concrete formwork panels that have holes as part of the manufacturing process"),
+		::anno::author("NVIDIA vMaterials"),
+		::anno::copyright_notice(COPYRIGHT),
+		::anno::thumbnail("./.thumbs/Concrete_Precast.concrete_precast_warm_gray.png"),
+		::anno::key_words(string[]("floor", "cast", "concrete", "precast", "construction", "cement", "warm", "gray", "unfinished", "rough"))
+    ]]= 
+    ::nvidia::core_definitions::flex_material_v2(
+        base_color:  ::nvidia::core_definitions::blend_colors(
+                color_1: ::nvidia::core_definitions::blend_colors(
+                    color_1: concrete_color,
+                color_2: ::nvidia::core_definitions::file_texture(
+                    texture: texture_2d ( "./textures/precastconcrete_diff.png" , ::tex::gamma_srgb) ,
+                    mono_source:  ::base::mono_average,
+                    brightness:  1.f,
+                    contrast:  1.f,
+                    scaling:  0.5f/ texture_scale,
+                    translation:  texture_translate,
+                    rotation:  texture_rotate,
+                    clip:  false,
+                    texture_space:  uv_space_index,
+                    invert:  false).tint,
+                mode: ::base::color_layer_overlay,
+                weight: 1.0f ).tint,
+            color_2:  ::nvidia::core_definitions::file_texture(
+                texture: texture_2d ( "./textures/precastconcrete_grunge_mask.png" , ::tex::gamma_srgb) ,
+                mono_source:  ::base::mono_average,
+                brightness:  1.f,
+                contrast:  1.f,
+                scaling:  0.5f/ texture_scale,
+                translation:  texture_translate,
+                rotation:  texture_rotate,
+                clip:  false,
+                texture_space:  uv_space_index,
+                invert:  false).tint,
+            mode: ::base::color_layer_multiply,
+            weight: grunge_amount ).tint,
+        diffuse_roughness:  0.f,
+        is_metal:  false,
+        reflectivity: 1.0f,
+        reflection_roughness:  ::nvidia::core_definitions::blend_colors(
+            color_1: ::nvidia::core_definitions::file_texture(
+                texture: texture_2d ( "./textures/precastconcrete_rough.png" , ::tex::gamma_srgb) ,
+                mono_source:  ::base::mono_average,
+                brightness:  1.f,
+                contrast:  1.f,
+                scaling:  0.5f/ texture_scale,
+                translation:  texture_translate,
+                rotation:  texture_rotate,
+                clip:  false,
+                texture_space:  uv_space_index,
+                invert:  false).tint,
+            color_2: color (reflection_roughness),
+            mode: ::base::color_layer_overlay,
+            weight: 1.0f ).mono,
+        anisotropy:  0.f,
+        anisotropy_rotation:  0.f,
+        transparency:  0.f,
+        transmission_color:  color ( 1.f , 1.f , 1.f),
+        volume_color:  color ( 1.f , 1.f , 1.f),
+        transmission_roughness:  0.f,
+        base_thickness:  0.1f,
+        ior:  ior,
+        thin_walled:  false,
+        normal:  ::nvidia::core_definitions::normalmap_texture(
+            texture:  texture_2d ( "./textures/precastconcrete_norm.jpg" , ::tex::gamma_linear),
+            scaling: 0.5f/ texture_scale,
+            translation:  texture_translate,
+            rotation:  texture_rotate,
+            clip:  false,
+            factor: bump_strength * 0.20f,
+            texture_space:  uv_space_index));
+
+
+
+
+export material concrete_precast_dark_gray(
+    
+        color concrete_color = color ( 0.53f , 0.505f , 0.494f )
+        [[
+            ::anno::display_name("Concrete Color"),
+            ::anno::description ( "Choose the color of the Concrete."),
+            ::anno::in_group("Appearance")
+        ]],
+        float grunge_amount =  0.5f
+        [[
+            ::anno::display_name("Grunge Amount"),
+            ::anno::description("higher values results in more noise difference in the color of the concrete."),
+            ::anno::hard_range(0.0,1.0),
+            ::anno::in_group("Appearance")
+        ]],
+        float reflection_roughness =  0.15f
+        [[
+            ::anno::display_name("Roughness"),
+            ::anno::description("Higher roughness values lead to bigger highlights and blurrier reflections."),
+            ::anno::hard_range(0.0,1.0),
+            ::anno::in_group("Appearance")
+        ]],
+        uniform float bump_strength =  1.f
+        [[
+            ::anno::display_name("Bump Strength"),
+            ::anno::description("Specifies the strength of the bump."),
+            ::anno::in_group("Appearance")
+        ]],
+        uniform float2 texture_translate =  float2 ( 0.f)
+        [[
+            ::anno::display_name("Translate"),
+            ::anno::description("Controls the position of the texture."),
+            ::anno::in_group("Transform")
+        ]],
+        uniform float texture_rotate =  0.f
+        [[
+            ::anno::display_name("Rotate"),
+            ::anno::description("Rotate angle of the texture in degrees."),
+            ::anno::in_group("Transform")
+        ]],
+        uniform float2 texture_scale =  float2 ( 1.f , 1.f)
+        [[
+            ::anno::display_name("Scale"),
+            ::anno::description("Larger numbers increase the texture size."),
+            ::anno::in_group("Transform"),
+			::nvidia::core_definitions::dimension(float2(1.0f, 1.0f))
+        ]],
+        uniform float ior =  1.5f
+        [[
+            ::anno::display_name("IOR"),
+            ::anno::description("Index of refraction."),
+            ::anno::soft_range(1.0,4.0),
+            ::anno::in_group("Advanced")
+        ]],
+        uniform int uv_space_index = 0
+        [[
+            ::anno::display_name("UV Space Index"),
+            ::anno::description("UV space index."),
+            ::anno::hard_range(0,3),
+            ::anno::in_group("Advanced")
+        ]])
+    [[
+        ::anno::display_name("Concrete Precast - Dark Gray"),
+		::anno::description("A material for (pre)cast concrete formwork panels that have holes as part of the manufacturing process"),
+		::anno::author("NVIDIA vMaterials"),
+		::anno::copyright_notice(COPYRIGHT),
+		::anno::thumbnail("./.thumbs/Concrete_Precast.concrete_precast_dark_gray.png"),
+		::anno::key_words(string[]("floor", "cast", "concrete", "precast", "construction", "cement", "dark", "gray", "dark gray", "unfinished", "rough"))
+    ]]= 
+    ::nvidia::core_definitions::flex_material_v2(
+        base_color:  ::nvidia::core_definitions::blend_colors(
+                color_1: ::nvidia::core_definitions::blend_colors(
+                    color_1: concrete_color,
+                color_2: ::nvidia::core_definitions::file_texture(
+                    texture: texture_2d ( "./textures/precastconcrete_diff.png" , ::tex::gamma_srgb) ,
+                    mono_source:  ::base::mono_average,
+                    brightness:  1.f,
+                    contrast:  1.f,
+                    scaling:  0.5f/ texture_scale,
+                    translation:  texture_translate,
+                    rotation:  texture_rotate,
+                    clip:  false,
+                    texture_space:  uv_space_index,
+                    invert:  false).tint,
+                mode: ::base::color_layer_overlay,
+                weight: 1.0f ).tint,
+            color_2:  ::nvidia::core_definitions::file_texture(
+                texture: texture_2d ( "./textures/precastconcrete_grunge_mask.png" , ::tex::gamma_srgb) ,
+                mono_source:  ::base::mono_average,
+                brightness:  1.f,
+                contrast:  1.f,
+                scaling:  0.5f/ texture_scale,
+                translation:  texture_translate,
+                rotation:  texture_rotate,
+                clip:  false,
+                texture_space:  uv_space_index,
+                invert:  false).tint,
+            mode: ::base::color_layer_multiply,
+            weight: grunge_amount ).tint,
+        diffuse_roughness:  0.f,
+        is_metal:  false,
+        reflectivity: 1.0f,
+        reflection_roughness:  ::nvidia::core_definitions::blend_colors(
+            color_1: ::nvidia::core_definitions::file_texture(
+                texture: texture_2d ( "./textures/precastconcrete_rough.png" , ::tex::gamma_srgb) ,
+                mono_source:  ::base::mono_average,
+                brightness:  1.f,
+                contrast:  1.f,
+                scaling:  0.5f/ texture_scale,
+                translation:  texture_translate,
+                rotation:  texture_rotate,
+                clip:  false,
+                texture_space:  uv_space_index,
+                invert:  false).tint,
+            color_2: color (reflection_roughness),
+            mode: ::base::color_layer_overlay,
+            weight: 1.0f ).mono,
+        anisotropy:  0.f,
+        anisotropy_rotation:  0.f,
+        transparency:  0.f,
+        transmission_color:  color ( 1.f , 1.f , 1.f),
+        volume_color:  color ( 1.f , 1.f , 1.f),
+        transmission_roughness:  0.f,
+        base_thickness:  0.1f,
+        ior:  ior,
+        thin_walled:  false,
+        normal:  ::nvidia::core_definitions::normalmap_texture(
+            texture:  texture_2d ( "./textures/precastconcrete_norm.jpg" , ::tex::gamma_linear),
+            scaling: 0.5f/ texture_scale,
+            translation:  texture_translate,
+            rotation:  texture_rotate,
+            clip:  false,
+            factor: bump_strength * 0.20f,
+            texture_space:  uv_space_index));
+
+
+
+export material concrete_precast_dark_charcoal(
+    
+        color concrete_color = color ( 0.28f , 0.259f , 0.239f )
+        [[
+            ::anno::display_name("Concrete Color"),
+            ::anno::description ( "Choose the color of the Concrete."),
+            ::anno::in_group("Appearance")
+        ]],
+        float grunge_amount =  0.5f
+        [[
+            ::anno::display_name("Grunge Amount"),
+            ::anno::description("higher values results in more noise difference in the color of the concrete."),
+            ::anno::hard_range(0.0,1.0),
+            ::anno::in_group("Appearance")
+        ]],
+        float reflection_roughness =  0.15f
+        [[
+            ::anno::display_name("Roughness"),
+            ::anno::description("Higher roughness values lead to bigger highlights and blurrier reflections."),
+            ::anno::hard_range(0.0,1.0),
+            ::anno::in_group("Appearance")
+        ]],
+        uniform float bump_strength =  1.f
+        [[
+            ::anno::display_name("Bump Strength"),
+            ::anno::description("Specifies the strength of the bump."),
+            ::anno::in_group("Appearance")
+        ]],
+        uniform float2 texture_translate =  float2 ( 0.f)
+        [[
+            ::anno::display_name("Translate"),
+            ::anno::description("Controls the position of the texture."),
+            ::anno::in_group("Transform")
+        ]],
+        uniform float texture_rotate =  0.f
+        [[
+            ::anno::display_name("Rotate"),
+            ::anno::description("Rotate angle of the texture in degrees."),
+            ::anno::in_group("Transform")
+        ]],
+        uniform float2 texture_scale =  float2 ( 1.f , 1.f)
+        [[
+            ::anno::display_name("Scale"),
+            ::anno::description("Larger numbers increase the texture size."),
+            ::anno::in_group("Transform"),
+			::nvidia::core_definitions::dimension(float2(1.0f, 1.0f))
+        ]],
+        uniform float ior =  1.5f
+        [[
+            ::anno::display_name("IOR"),
+            ::anno::description("Index of refraction."),
+            ::anno::soft_range(1.0,4.0),
+            ::anno::in_group("Advanced")
+        ]],
+        uniform int uv_space_index = 0
+        [[
+            ::anno::display_name("UV Space Index"),
+            ::anno::description("UV space index."),
+            ::anno::hard_range(0,3),
+            ::anno::in_group("Advanced")
+        ]])
+    [[
+        ::anno::display_name("Concrete Precast - Charcoal"),
+		::anno::description("A material for (pre)cast concrete formwork panels that have holes as part of the manufacturing process"),
+		::anno::author("NVIDIA vMaterials"),
+		::anno::copyright_notice(COPYRIGHT),
+		::anno::thumbnail("./.thumbs/Concrete_Precast.concrete_precast_dark_charcoal.png"),
+		::anno::key_words(string[]("floor", "cast", "concrete", "precast", "construction", "cement", "dark", "charcoal", "gray", "unfinished", "rough"))
+    ]]= 
+    ::nvidia::core_definitions::flex_material_v2(
+        base_color:  ::nvidia::core_definitions::blend_colors(
+                color_1: ::nvidia::core_definitions::blend_colors(
+                    color_1: concrete_color,
+                color_2: ::nvidia::core_definitions::file_texture(
+                    texture: texture_2d ( "./textures/precastconcrete_diff.png" , ::tex::gamma_srgb) ,
+                    mono_source:  ::base::mono_average,
+                    brightness:  1.f,
+                    contrast:  1.f,
+                    scaling:  0.5f/ texture_scale,
+                    translation:  texture_translate,
+                    rotation:  texture_rotate,
+                    clip:  false,
+                    texture_space:  uv_space_index,
+                    invert:  false).tint,
+                mode: ::base::color_layer_overlay,
+                weight: 1.0f ).tint,
+            color_2:  ::nvidia::core_definitions::file_texture(
+                texture: texture_2d ( "./textures/precastconcrete_grunge_mask.png" , ::tex::gamma_srgb) ,
+                mono_source:  ::base::mono_average,
+                brightness:  1.f,
+                contrast:  1.f,
+                scaling:  0.5f/ texture_scale,
+                translation:  texture_translate,
+                rotation:  texture_rotate,
+                clip:  false,
+                texture_space:  uv_space_index,
+                invert:  false).tint,
+            mode: ::base::color_layer_multiply,
+            weight: grunge_amount ).tint,
+        diffuse_roughness:  0.f,
+        is_metal:  false,
+        reflectivity: 1.0f,
+        reflection_roughness:  ::nvidia::core_definitions::blend_colors(
+            color_1: ::nvidia::core_definitions::file_texture(
+                texture: texture_2d ( "./textures/precastconcrete_rough.png" , ::tex::gamma_srgb) ,
+                mono_source:  ::base::mono_average,
+                brightness:  1.f,
+                contrast:  1.f,
+                scaling:  0.5f/ texture_scale,
+                translation:  texture_translate,
+                rotation:  texture_rotate,
+                clip:  false,
+                texture_space:  uv_space_index,
+                invert:  false).tint,
+            color_2: color (reflection_roughness),
+            mode: ::base::color_layer_overlay,
+            weight: 1.0f ).mono,
+        anisotropy:  0.f,
+        anisotropy_rotation:  0.f,
+        transparency:  0.f,
+        transmission_color:  color ( 1.f , 1.f , 1.f),
+        volume_color:  color ( 1.f , 1.f , 1.f),
+        transmission_roughness:  0.f,
+        base_thickness:  0.1f,
+        ior:  ior,
+        thin_walled:  false,
+        normal:  ::nvidia::core_definitions::normalmap_texture(
+            texture:  texture_2d ( "./textures/precastconcrete_norm.jpg" , ::tex::gamma_linear),
+            scaling: 0.5f/ texture_scale,
+            translation:  texture_translate,
+            rotation:  texture_rotate,
+            clip:  false,
+            factor: bump_strength * 0.20f,
+            texture_space:  uv_space_index));
+
+
+
+export material concrete_precast_walnut(
+    
+        color concrete_color = color ( 0.47f , 0.307f , 0.239f )
+        [[
+            ::anno::display_name("Concrete Color"),
+            ::anno::description ( "Choose the color of the Concrete."),
+            ::anno::in_group("Appearance")
+        ]],
+        float grunge_amount =  0.5f
+        [[
+            ::anno::display_name("Grunge Amount"),
+            ::anno::description("higher values results in more noise difference in the color of the concrete."),
+            ::anno::hard_range(0.0,1.0),
+            ::anno::in_group("Appearance")
+        ]],
+        float reflection_roughness =  0.15f
+        [[
+            ::anno::display_name("Roughness"),
+            ::anno::description("Higher roughness values lead to bigger highlights and blurrier reflections."),
+            ::anno::hard_range(0.0,1.0),
+            ::anno::in_group("Appearance")
+        ]],
+        uniform float bump_strength =  1.f
+        [[
+            ::anno::display_name("Bump Strength"),
+            ::anno::description("Specifies the strength of the bump."),
+            ::anno::in_group("Appearance")
+        ]],
+        uniform float2 texture_translate =  float2 ( 0.f)
+        [[
+            ::anno::display_name("Translate"),
+            ::anno::description("Controls the position of the texture."),
+            ::anno::in_group("Transform")
+        ]],
+        uniform float texture_rotate =  0.f
+        [[
+            ::anno::display_name("Rotate"),
+            ::anno::description("Rotate angle of the texture in degrees."),
+            ::anno::in_group("Transform")
+        ]],
+        uniform float2 texture_scale =  float2 ( 1.f , 1.f)
+        [[
+            ::anno::display_name("Scale"),
+            ::anno::description("Larger numbers increase the texture size."),
+            ::anno::in_group("Transform"),
+			::nvidia::core_definitions::dimension(float2(1.0f, 1.0f))
+        ]],
+        uniform float ior =  1.5f
+        [[
+            ::anno::display_name("IOR"),
+            ::anno::description("Index of refraction."),
+            ::anno::soft_range(1.0,4.0),
+            ::anno::in_group("Advanced")
+        ]],
+        uniform int uv_space_index = 0
+        [[
+            ::anno::display_name("UV Space Index"),
+            ::anno::description("UV space index."),
+            ::anno::hard_range(0,3),
+            ::anno::in_group("Advanced")
+        ]])
+    [[
+        ::anno::display_name("Concrete Precast - Walnut"),
+		::anno::description("A material for (pre)cast concrete formwork panels that have holes as part of the manufacturing process"),
+		::anno::author("NVIDIA vMaterials"),
+		::anno::copyright_notice(COPYRIGHT),
+		::anno::thumbnail("./.thumbs/Concrete_Precast.concrete_precast_walnut.png"),
+		::anno::key_words(string[]("floor", "cast", "concrete", "precast", "construction", "cement", "warm", "walnut", "unfinished", "rough"))
+    ]]= 
+    ::nvidia::core_definitions::flex_material_v2(
+        base_color:  ::nvidia::core_definitions::blend_colors(
+                color_1: ::nvidia::core_definitions::blend_colors(
+                    color_1: concrete_color,
+                color_2: ::nvidia::core_definitions::file_texture(
+                    texture: texture_2d ( "./textures/precastconcrete_diff.png" , ::tex::gamma_srgb) ,
+                    mono_source:  ::base::mono_average,
+                    brightness:  1.f,
+                    contrast:  1.f,
+                    scaling:  0.5f/ texture_scale,
+                    translation:  texture_translate,
+                    rotation:  texture_rotate,
+                    clip:  false,
+                    texture_space:  uv_space_index,
+                    invert:  false).tint,
+                mode: ::base::color_layer_overlay,
+                weight: 1.0f ).tint,
+            color_2:  ::nvidia::core_definitions::file_texture(
+                texture: texture_2d ( "./textures/precastconcrete_grunge_mask.png" , ::tex::gamma_srgb) ,
+                mono_source:  ::base::mono_average,
+                brightness:  1.f,
+                contrast:  1.f,
+                scaling:  0.5f/ texture_scale,
+                translation:  texture_translate,
+                rotation:  texture_rotate,
+                clip:  false,
+                texture_space:  uv_space_index,
+                invert:  false).tint,
+            mode: ::base::color_layer_multiply,
+            weight: grunge_amount ).tint,
+        diffuse_roughness:  0.f,
+        is_metal:  false,
+        reflectivity: 1.0f,
+        reflection_roughness:  ::nvidia::core_definitions::blend_colors(
+            color_1: ::nvidia::core_definitions::file_texture(
+                texture: texture_2d ( "./textures/precastconcrete_rough.png" , ::tex::gamma_srgb) ,
+                mono_source:  ::base::mono_average,
+                brightness:  1.f,
+                contrast:  1.f,
+                scaling:  0.5f/ texture_scale,
+                translation:  texture_translate,
+                rotation:  texture_rotate,
+                clip:  false,
+                texture_space:  uv_space_index,
+                invert:  false).tint,
+            color_2: color (reflection_roughness),
+            mode: ::base::color_layer_overlay,
+            weight: 1.0f ).mono,
+        anisotropy:  0.f,
+        anisotropy_rotation:  0.f,
+        transparency:  0.f,
+        transmission_color:  color ( 1.f , 1.f , 1.f),
+        volume_color:  color ( 1.f , 1.f , 1.f),
+        transmission_roughness:  0.f,
+        base_thickness:  0.1f,
+        ior:  ior,
+        thin_walled:  false,
+        normal:  ::nvidia::core_definitions::normalmap_texture(
+            texture:  texture_2d ( "./textures/precastconcrete_norm.jpg" , ::tex::gamma_linear),
+            scaling: 0.5f/ texture_scale,
+            translation:  texture_translate,
+            rotation:  texture_rotate,
+            clip:  false,
+            factor: bump_strength * 0.20f,
+            texture_space:  uv_space_index));
+
+
+export material concrete_precast_sienna(
+    
+        color concrete_color = color ( 0.517f , 0.453f , 0.344f )
+        [[
+            ::anno::display_name("Concrete Color"),
+            ::anno::description ( "Choose the color of the Concrete."),
+            ::anno::in_group("Appearance")
+        ]],
+        float grunge_amount =  0.5f
+        [[
+            ::anno::display_name("Grunge Amount"),
+            ::anno::description("higher values results in more noise difference in the color of the concrete."),
+            ::anno::hard_range(0.0,1.0),
+            ::anno::in_group("Appearance")
+        ]],
+        float reflection_roughness =  0.15f
+        [[
+            ::anno::display_name("Roughness"),
+            ::anno::description("Higher roughness values lead to bigger highlights and blurrier reflections."),
+            ::anno::hard_range(0.0,1.0),
+            ::anno::in_group("Appearance")
+        ]],
+        uniform float bump_strength =  1.f
+        [[
+            ::anno::display_name("Bump Strength"),
+            ::anno::description("Specifies the strength of the bump."),
+            ::anno::in_group("Appearance")
+        ]],
+        uniform float2 texture_translate =  float2 ( 0.f)
+        [[
+            ::anno::display_name("Translate"),
+            ::anno::description("Controls the position of the texture."),
+            ::anno::in_group("Transform")
+        ]],
+        uniform float texture_rotate =  0.f
+        [[
+            ::anno::display_name("Rotate"),
+            ::anno::description("Rotate angle of the texture in degrees."),
+            ::anno::in_group("Transform")
+        ]],
+        uniform float2 texture_scale =  float2 ( 1.f , 1.f)
+        [[
+            ::anno::display_name("Scale"),
+            ::anno::description("Larger numbers increase the texture size."),
+            ::anno::in_group("Transform"),
+			::nvidia::core_definitions::dimension(float2(1.0f, 1.0f))
+        ]],
+        uniform float ior =  1.5f
+        [[
+            ::anno::display_name("IOR"),
+            ::anno::description("Index of refraction."),
+            ::anno::soft_range(1.0,4.0),
+            ::anno::in_group("Advanced")
+        ]],
+        uniform int uv_space_index = 0
+        [[
+            ::anno::display_name("UV Space Index"),
+            ::anno::description("UV space index."),
+            ::anno::hard_range(0,3),
+            ::anno::in_group("Advanced")
+        ]])
+    [[
+        ::anno::display_name("Concrete Precast - Sienna"),
+		::anno::description("A material for (pre)cast concrete formwork panels that have holes as part of the manufacturing process"),
+		::anno::author("NVIDIA vMaterials"),
+		::anno::copyright_notice(COPYRIGHT),
+		::anno::thumbnail("./.thumbs/Concrete_Precast.concrete_precast_sienna.png"),
+		::anno::key_words(string[]("floor", "cast", "concrete", "precast", "construction", "cement", "sienna", "gray", "unfinished", "rough"))
+    ]]= 
+    ::nvidia::core_definitions::flex_material_v2(
+        base_color:  ::nvidia::core_definitions::blend_colors(
+                color_1: ::nvidia::core_definitions::blend_colors(
+                    color_1: concrete_color,
+                color_2: ::nvidia::core_definitions::file_texture(
+                    texture: texture_2d ( "./textures/precastconcrete_diff.png" , ::tex::gamma_srgb) ,
+                    mono_source:  ::base::mono_average,
+                    brightness:  1.f,
+                    contrast:  1.f,
+                    scaling:  0.5f/ texture_scale,
+                    translation:  texture_translate,
+                    rotation:  texture_rotate,
+                    clip:  false,
+                    texture_space:  uv_space_index,
+                    invert:  false).tint,
+                mode: ::base::color_layer_overlay,
+                weight: 1.0f ).tint,
+            color_2:  ::nvidia::core_definitions::file_texture(
+                texture: texture_2d ( "./textures/precastconcrete_grunge_mask.png" , ::tex::gamma_srgb) ,
+                mono_source:  ::base::mono_average,
+                brightness:  1.f,
+                contrast:  1.f,
+                scaling:  0.5f/ texture_scale,
+                translation:  texture_translate,
+                rotation:  texture_rotate,
+                clip:  false,
+                texture_space:  uv_space_index,
+                invert:  false).tint,
+            mode: ::base::color_layer_multiply,
+            weight: grunge_amount ).tint,
+        diffuse_roughness:  0.f,
+        is_metal:  false,
+        reflectivity: 1.0f,
+        reflection_roughness:  ::nvidia::core_definitions::blend_colors(
+            color_1: ::nvidia::core_definitions::file_texture(
+                texture: texture_2d ( "./textures/precastconcrete_rough.png" , ::tex::gamma_srgb) ,
+                mono_source:  ::base::mono_average,
+                brightness:  1.f,
+                contrast:  1.f,
+                scaling:  0.5f/ texture_scale,
+                translation:  texture_translate,
+                rotation:  texture_rotate,
+                clip:  false,
+                texture_space:  uv_space_index,
+                invert:  false).tint,
+            color_2: color (reflection_roughness),
+            mode: ::base::color_layer_overlay,
+            weight: 1.0f ).mono,
+        anisotropy:  0.f,
+        anisotropy_rotation:  0.f,
+        transparency:  0.f,
+        transmission_color:  color ( 1.f , 1.f , 1.f),
+        volume_color:  color ( 1.f , 1.f , 1.f),
+        transmission_roughness:  0.f,
+        base_thickness:  0.1f,
+        ior:  ior,
+        thin_walled:  false,
+        normal:  ::nvidia::core_definitions::normalmap_texture(
+            texture:  texture_2d ( "./textures/precastconcrete_norm.jpg" , ::tex::gamma_linear),
+            scaling: 0.5f/ texture_scale,
+            translation:  texture_translate,
+            rotation:  texture_rotate,
+            clip:  false,
+            factor: bump_strength * 0.20f,
+            texture_space:  uv_space_index));

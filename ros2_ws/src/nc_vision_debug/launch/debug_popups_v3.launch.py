@@ -9,6 +9,13 @@ import os
 def generate_launch_description() -> LaunchDescription:
     package_share = get_package_share_directory("nc_vision_debug")
     config_path = os.path.join(package_share, "config", "debug_popups_v3.yaml")
+    model_path = os.path.join(
+        get_package_share_directory("nc_vision"),
+        "models",
+        "netclean_yolo11n",
+        "weights",
+        "best.pt",
+    )
 
     return LaunchDescription(
         [
@@ -17,14 +24,14 @@ def generate_launch_description() -> LaunchDescription:
                 executable="vision1_debug_popup_v3",
                 name="vision1_debug_popup",
                 output="screen",
-                parameters=[config_path],
+                parameters=[config_path, {"model_path": model_path}],
             ),
             Node(
                 package="nc_vision_debug",
                 executable="vision2_debug_popup_v3",
                 name="vision2_debug_popup",
                 output="screen",
-                parameters=[config_path],
+                parameters=[config_path, {"model_path": model_path}],
             ),
         ]
     )

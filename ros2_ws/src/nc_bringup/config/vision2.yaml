@@ -2,7 +2,7 @@ vision2_node:
   ros__parameters:
     use_sim_time: true
 
-    model_path: /home/rokey/netclean_project/models/netclean_yolo11n/weights/best.pt
+    model_path: models/netclean_yolo11n/weights/best.pt
     device: "0"
     model_imgsz: 640
     confidence: 0.40

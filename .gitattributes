@@ -1,0 +1,4 @@
+# Imported simulation assets are treated as opaque artifacts. This preserves
+# their original bytes and keeps code reviews focused on project source.
+sim/assets/** -diff
+sim/cobot3_ws/** -diff

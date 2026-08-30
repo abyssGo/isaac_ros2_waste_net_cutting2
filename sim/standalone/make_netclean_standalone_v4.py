@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create netclean_standalone_v4.py from the current v2 standalone.
+"""Create netclean_standalone_v4.py from the current main standalone.
 
 Changes are intentionally limited to:
 1. Default USD -> simulation_integration_v4.usd
@@ -16,9 +16,10 @@ import re
 from pathlib import Path
 
 
-DEFAULT_SOURCE = Path.home() / "netclean_project/sim/standalone/netclean_standalone_v2.py"
-DEFAULT_OUTPUT = Path.home() / "netclean_project/sim/standalone/netclean_standalone_v4.py"
-V4_USD_PATH = "/home/rokey/isaac_simulation_intergration/project1/simulation_integration_v4.usd"
+STANDALONE_DIR = Path(__file__).resolve().parent
+DEFAULT_SOURCE = STANDALONE_DIR / "netclean_standalone.py"
+DEFAULT_OUTPUT = STANDALONE_DIR / "netclean_standalone_v4.py"
+V4_USD_PATH = STANDALONE_DIR.parent / "assets" / "project1" / "simulation_integration_v4.usd"
 
 
 OLD_SUCTION_BLOCK = """\
@@ -115,8 +116,8 @@ NEW_SUCTION_BLOCK = """\
 
 
 def replace_usd_path(text: str) -> str:
-    pattern = re.compile(r'^USD_PATH\s*=\s*["\'][^"\']+["\']\s*$', re.MULTILINE)
-    replacement = f'USD_PATH = "{V4_USD_PATH}"'
+    pattern = re.compile(r'^USD_PATH\s*=.*$', re.MULTILINE)
+    replacement = 'USD_PATH = str(ASSET_ROOT / "simulation_integration_v4.usd")'
     updated, count = pattern.subn(replacement, text, count=1)
     if count != 1:
         raise RuntimeError("USD_PATH 선언을 정확히 하나 찾지 못했습니다.")
@@ -159,7 +160,7 @@ def main() -> None:
     print(f"생성 완료: {output}")
     print(f"기본 USD: {V4_USD_PATH}")
     print("문법 검사: 성공")
-    print("원본 v2 파일은 변경하지 않았습니다.")
+    print("원본 standalone 파일은 변경하지 않았습니다.")
 
 
 if __name__ == "__main__":

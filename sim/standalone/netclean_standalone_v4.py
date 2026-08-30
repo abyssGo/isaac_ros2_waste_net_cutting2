@@ -37,6 +37,7 @@ from collections import deque
 from dataclasses import dataclass
 import math
 import os
+from pathlib import Path
 import signal
 import sys
 import time
@@ -53,9 +54,10 @@ import numpy as np
 CONFIG_READY = True
 
 
-# 1) 저장한 최종 USD의 절대 경로
-# 예: "/home/yong/netclean/assets/netclean_world.usd"
-USD_PATH = "/home/rokey/isaac_simulation_intergration/project1/simulation_integration_v4.usd"
+# 1) 저장소에 포함된 최종 USD와 관련 에셋 경로
+REPO_ROOT = Path(__file__).resolve().parents[2]
+ASSET_ROOT = REPO_ROOT / "sim" / "assets" / "project1"
+USD_PATH = str(ASSET_ROOT / "simulation_integration_v3.usd")
 # 2) 월드 안의 필수 Prim 경로
 # Stage 창에서 Prim을 우클릭하여 Copy Prim Path로 복사한다.
 #
@@ -89,8 +91,8 @@ CAMERA2_GRAPH_PRIM_PATH = "/ROSGraphs/AG_Camera2"
 # - 6개 actuated joint 목록
 # - default c-space configuration
 # 순수 Lula IK만 사용하므로 collision sphere는 없어도 된다.
-M0609_URDF_PATH = "/home/rokey/isaac_simulation_intergration/project1/robot2_sample/m0609_isaac_sim.urdf"
-M0609_LULA_DESCRIPTOR_PATH = "/home/rokey/isaac_simulation_intergration/project1/robot2_sample/m0609_description.yaml"
+M0609_URDF_PATH = str(ASSET_ROOT / "robot2_sample" / "m0609_isaac_sim.urdf")
+M0609_LULA_DESCRIPTOR_PATH = str(ASSET_ROOT / "robot2_sample" / "m0609_description.yaml")
 M0609_END_EFFECTOR_FRAME = "link_6"
 
 

@@ -175,7 +175,7 @@ class Vision2Node(Node):
     def _declare_parameters(self) -> None:
         self.declare_parameter(
             "model_path",
-            "/home/rokey/netclean_project/models/netclean_yolo11n/weights/best.pt",
+            "models/netclean_yolo11n/weights/best.pt",
         )
         self.declare_parameter("device", "0")
         self.declare_parameter("model_imgsz", 640)

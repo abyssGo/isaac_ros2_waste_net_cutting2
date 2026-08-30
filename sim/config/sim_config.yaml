@@ -1,5 +1,6 @@
 world:
-  usd_path: /home/rokey/isaac_simulation_intergration/project1/simulation_integration_v3.usd
+  # 저장소 루트 기준 경로
+  usd_path: sim/assets/project1/simulation_integration_v3.usd
   meters_per_unit: 1.0
   up_axis: Z
 runtime:
@@ -65,8 +66,8 @@ rail:
   - /World/collected_net/World4/net_collected/carriage_BR
   physical_net_prim_path: /World/collected_net/World4/net_collected/net_green
 m0609:
-  urdf_path: /home/rokey/isaac_simulation_intergration/project1/robot2_sample/m0609_isaac_sim.urdf
-  lula_descriptor_path: /home/rokey/isaac_simulation_intergration/project1/robot2_sample/m0609_description.yaml
+  urdf_path: sim/assets/project1/robot2_sample/m0609_isaac_sim.urdf
+  lula_descriptor_path: sim/assets/project1/robot2_sample/m0609_description.yaml
   end_effector_frame: link_6
   stiffness:
   - 40.7156

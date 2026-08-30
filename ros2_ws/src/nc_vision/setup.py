@@ -2,6 +2,7 @@ from setuptools import find_packages, setup
 
 
 package_name = "nc_vision"
+model_file = "../../../models/netclean_yolo11n/weights/best.pt"
 
 
 setup(
@@ -14,6 +15,10 @@ setup(
             ["resource/" + package_name],
         ),
         ("share/" + package_name, ["package.xml"]),
+        (
+            "share/" + package_name + "/models/netclean_yolo11n/weights",
+            [model_file],
+        ),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
