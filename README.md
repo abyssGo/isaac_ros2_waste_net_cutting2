@@ -1,113 +1,115 @@
-# ♻️ NetClean 폐어망 자동 절단·수거 시스템
+# NetClean — 폐어망 이물질 절단 · 제거 자동화 (Isaac Sim 디지털 트윈 · ROS 2)
 
-> ROS 2 Jazzy + NVIDIA Isaac Sim 5.1 + YOLO11 기반 폐어망 처리 시뮬레이션
+폐어망에 얽힌 플라스틱 병 · 캔 · 부표를 **카메라로 찾아 로봇이 어망을 자르고, 흡착해 떼어낸 뒤, 다시 찍어 제거를 확인한다.** 실제 설비를 만들기 전에 카메라 위치 · 로봇 도달성 · 물리 결합 · 공정 순서를 Isaac Sim 디지털 트윈에서 먼저 검증하는 프로젝트다.
 
-NetClean은 컨베이어로 이동하는 폐어망을 두 개의 작업 구역에서 자동 처리하는
-디지털 트윈 프로젝트입니다. Station 1에서는 RGB-D 영상으로 폐기물을 인식해
-Robot 1이 주변 어망을 절단하고, Station 2에서는 Robot 2가 폐기물을 흡착·분리해
-지정된 위치로 옮깁니다.
+https://github.com/user-attachments/assets/64e6e503-a420-4058-8fd8-c774d934e16e
 
-메인 월드, 로봇·카메라·컨베이어 에셋, Isaac Sim standalone 코드, ROS 2 패키지와
-학습된 YOLO 가중치를 한 저장소에서 제공합니다.
 
----
+> 두산 ROKEY Boot Camp 9기 · 협동-3 프로젝트 "디지털 트윈 기반 로봇 자동화 시뮬레이션 시스템 구현" · D그룹 3조 **포바오** (이수현 · 박성현 · 박진용 · 서동권, 이한혁 중도 포기, 멘토 손미란) · 2026-08-15 ~ 08-28
 
-## 📌 주요 기능 (Key Features)
+| 항목 | 내용 |
+|---|---|
+| 로봇(시뮬레이션) | Doosan M0609 2대 — Robot 1 Cutter · Robot 2 VG10 흡착 그리퍼 |
+| 소프트웨어 | Ubuntu 24.04 · ROS 2 Jazzy · Isaac Sim 5.1 · Python · YOLO11 · OpenCV |
+| 결과 | Isaac Sim 에서 Station1 절단 → Station2 흡착 제거 → Vision2 재검사 → Exit 1사이클 시연 · YOLO11n 합성데이터 mAP50 0.995 · 반복 성공률 등 정량 지표는 **미측정**([결과](#결과)) |
+| 바로 해 보기 | GPU · Isaac Sim 없이 Ubuntu 24.04 PC 한 대로 빌드 · 좌표 변환 시험 · 제출 구성 점검을 해 본다 → [실행 방법 1](#실행-방법) |
 
-### 1. 반복 공정 및 어망 이송 (Process Control)
+## 목차
 
-- `nc_control`의 상태 머신이 `Station 1 → Station 2 → EXIT → RESET` 순서를 관리합니다.
-- 현재 위치와 목표 위치를 비교해 도착을 판단하고 각 작업 노드에 시작 신호를 보냅니다.
-- 작업·이송·초기화 시간 초과를 wall clock watchdog으로 감시합니다.
-- `repeat_enabled`와 `max_cycles` 파라미터로 단일 또는 반복 공정을 선택할 수 있습니다.
+1. [내 역할](#내-역할)
+2. [주요 기능](#주요-기능)
+3. [시스템 구성](#시스템-구성)
+4. [결과](#결과)
+5. [실행 방법](#실행-방법)
+6. [개발 환경 · 사용 장비](#개발-환경--사용-장비)
+7. [프로젝트 구조](#프로젝트-구조)
+8. [팀 · 라이선스](#팀--라이선스)
 
-### 2. Station 1 비전 절단 (Vision-guided Cutting)
+## 내 역할
 
-- Camera 1의 RGB-D 영상에서 `plastic_bottle`, `can`, `buoy`를 YOLO11로 검출합니다.
-- Bounding Box 방향과 여백을 이용해 객체별 절단점 `P1`, `P2`를 계산합니다.
-- `/cut/execute` Action으로 절단 목표를 Robot 1에 전달합니다.
-- Robot 1은 `APPROACH → CONTACT → CUT → RETREAT → HOME` 순서로 움직이며 실패 시 안전 복구를 시도합니다.
+4명이 함께 만든 팀 프로젝트이고, 그중 내가 맡은 부분은 이렇다. — **박진용**
 
-### 3. Station 2 폐기물 수거 (Depth-guided Removal)
+- **Standalone 실행 계층 설계** — `SimulationApp` · `world.step()`(60 Hz) · `rclpy.spin_once()` 를 한 루프로 묶고, Net 이송 · 로봇 모션 · 흡착 · Joint 해제를 클래스로 나눴다([`netclean_standalone_v2_home_joint_fix_v2.py`](sim/standalone/netclean_standalone_v2_home_joint_fix_v2.py), 시연 최종본으로 판단).
+- **로봇 모션 제어**(박성현과 공동) — 월드 TCP 목표 → Tool Offset 역보정 → Lula IK → 속도 기반 smoothstep 관절 보간. 관절 오차 ≤ 1° 와 timeout 으로 완료를 판정하고, Home 은 IK 대신 안전 관절값으로 이동한다.
+- **작업 순서 · 실패 복구** — Robot 1 절단, Robot 2 흡착 제거 시퀀스와 `RETREAT → RECOVERY_HOME → 재진입` 복구, 실패 시 Action abort([`robot1_node.py`](ros2_ws/src/nc_robot/nc_robot/robot1_node.py) · [`robot2_node.py`](ros2_ws/src/nc_robot/nc_robot/robot2_node.py)).
+- **흡착 · Joint 해제 안전장치** — 흡착 성공 응답을 확인한 뒤에만 어망 Joint 를 해제하고, 표면–TCP 거리 ≤ 3 cm 를 검사한 뒤 상대 offset 으로 추종해 Snap 을 막았다.
+- **시스템 병합 · 테스트** — 노드별 기능을 PC A · PC B 분산 구조로 병합하고, Net 위치 ±2 cm · 관절 오차 ≤ 1° · 흡착 상태 응답 같은 단계별 성공 기준으로 통합 시연을 확인했다.
 
-- Camera 2의 RGB-D 영상으로 남아 있는 폐기물을 다시 인식합니다.
-- `plastic_bottle`은 내부 ROI의 유효 Depth 중앙값을 사용해 안정적인 흡착점을 선택합니다.
-- `can`과 `buoy`는 Bounding Box 중심 기반 Depth 좌표를 사용합니다.
-- Robot 2는 접근, 흡착, Fixed Joint 해제, 이동, 배출, Home 복귀를 수행합니다.
-- 제거 후 새 프레임을 재검사하고 연속 빈 프레임이 확인되면 Station 2 완료를 알립니다.
+## 주요 기능
 
-### 4. 안전 복구 및 상태 검증 (Robust Recovery)
+- **책임을 나눈 4개 노드** — Control(공정 FSM) · Vision(YOLO + RGB-D → 3D 목표) · Robot(작업 순서) · Standalone(Isaac Sim 물리 · IK 실행). 센서 · 상태는 Topic, 로봇 작업 요청은 Action(Goal · Feedback · Result)으로 나눠 오류 원인을 노드 단위로 좁힌다.
+- **명령이 아니라 실제 상태로 넘어가는 공정** — Net 도착은 `/net/current_pose` 가 목표 ±2 cm 안에 들어왔을 때만 인정하고, 로봇 모션은 관절 오차 ≤ 1° 와 완료 응답으로 판정한다.
+- **어망 위 이물질의 3D 목표 생성** — YOLO11 로 `plastic_bottle` · `can` · `buoy` 를 찾고 RGB · Depth 를 동기화해 `Pixel(u, v) + Depth + CameraInfo K` 를 카메라 좌표 → 월드 좌표로 바꾼다. 페트병은 투명 · 반사로 Depth 가 흔들려 유효 Depth 중앙값을 쓴다.
+- **TCP 기준 모션 제어** — 월드 TCP 목표를 Tool Offset 으로 역보정해 Lula IK 로 풀고, 최대 관절 변화량 ÷ 속도(0.35 rad/s)로 이동 시간을 정해 smoothstep 으로 보간한다. 물리 · 렌더링은 60 Hz 한 루프에서 ROS 콜백과 함께 돈다.
+- **절단 → 흡착 제거 시퀀스** — Robot 1 은 객체마다 절단점 P1 · P2 를 `APPROACH → CONTACT → HOLD → RETREAT` 로 처리한다. Robot 2 는 `PREGRASP → CONTACT → SUCTION ON → JOINT RELEASE → RETREAT → DROP → SUCTION OFF → HOME` 이며, **흡착 성공 응답을 확인한 뒤에만** 어망과 물체의 Fixed Joint 를 해제한다.
+- **실패 복구와 재검사** — 접촉 실패 시 `RETREAT → RECOVERY_HOME → 재진입` 으로 한 번 더 시도하고, 복구까지 실패하면 Action 을 abort 한다. 제거 후에는 로봇 완료 이후의 **더 새로운 프레임**으로 재검사하고 연속 빈 프레임이 확인되면 Station 2 를 끝낸다.
 
-- 두 로봇 모두 동작 실패 시 `RETREAT → RECOVERY_HOME → 재진입` 복구 절차를 수행합니다.
-- 흡착 상태, Joint 해제 결과, 로봇 동작 완료 여부를 확인한 뒤 다음 단계로 진행합니다.
-- 치명적인 오류는 `/process/fault` 또는 `/sim/fault`로 전파됩니다.
+## 시스템 구성
 
-### 5. 멀티 PC Bringup 및 디버그 화면
+### 아키텍처
 
-- PC A: 상위 공정 제어와 Robot 1·2 노드 실행
-- PC B: Vision 1·2 노드와 YOLO 추론 실행
-- 디버그 패키지: 검출 영상, Action 상태, Depth 좌표와 공정 진행 상황 표시
+시스템은 `Simulation` · `Decision & Control` · `Perception` 세 계층이고, 두 PC 가 DDS(Fast DDS)로 연결된다. 시뮬레이션 실행 계층과 판단 계층을 나눠 책임을 고정하고 통합 · 디버깅 범위를 줄였다.
 
----
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/41e09f03-7c30-484a-8a67-d57c9cb03bbf" width="900" alt="시스템 아키텍처"><br>
+  <sub>PC A(Isaac Sim 실행 · 공정 제어 · Robot 노드)와 PC B(Vision · YOLO11 추론)를 ROS 2 DDS 로 연결</sub>
+</p>
 
-## 🛠️ 시스템 설계 (System Architecture)
+| 위치 | 구성 | 역할 |
+|---|---|---|
+| Simulation PC | Isaac Sim 5.1 + `netclean_standalone_v2_home_joint_fix_v2.py`(시연 최종본으로 판단) | USD 월드 · 물리 · 카메라 · 어망 이송 · Lula IK 모션 · 흡착 · Joint 해제 실행 |
+| PC A | `nc_control` · `nc_robot`(Robot 1 · 2) | 공정 순서 · 작업 순서 · 실패 복구 |
+| PC B | `nc_vision`(Vision 1 · 2) · YOLO11 | 탐지 · 3D 목표 생성 · 재검사 |
 
-시스템은 `Simulation`, `Decision & Control`, `Perception` 세 계층으로 구성됩니다.
-
-1. **Simulation:** Isaac Sim이 월드, 물리, 카메라, 로봇과 어망 이동을 담당합니다.
-2. **Decision & Control:** PC A의 `nc_control`과 `nc_robot`이 공정 순서와 로봇 동작을 관리합니다.
-3. **Perception:** PC B의 `nc_vision`이 RGB-D 영상에서 절단·수거 목표를 계산합니다.
-
-```mermaid
-flowchart LR
-    subgraph SIM[Isaac Sim 5.1]
-        WORLD[Main USD World]
-        CAM[Camera 1 / Camera 2]
-        ROBOTS[Robot 1 / Robot 2]
-        NET[Net & Carriages]
-    end
-
-    subgraph PCA[PC A - Decision & Control]
-        CONTROL[nc_control<br/>Process FSM]
-        ROBOT1[nc_robot<br/>Robot 1 Action Server]
-        ROBOT2[nc_robot<br/>Robot 2 Action Server]
-    end
-
-    subgraph PCB[PC B - Perception]
-        VISION1[nc_vision<br/>Vision 1]
-        VISION2[nc_vision<br/>Vision 2]
-        DEBUG[nc_vision_debug]
-    end
-
-    WORLD --> CAM
-    CAM -->|RGB / Depth / CameraInfo| VISION1
-    CAM -->|RGB / Depth / CameraInfo| VISION2
-    CONTROL -->|Net target / Reset| NET
-    NET -->|Current pose / Ready| CONTROL
-    CONTROL -->|Station arrived| VISION1
-    CONTROL -->|Station arrived| VISION2
-    VISION1 -->|ExecuteCut Action| ROBOT1
-    VISION2 -->|ExecuteRemove Action| ROBOT2
-    ROBOT1 -->|Motion command| ROBOTS
-    ROBOT2 -->|Motion / Suction / Joint release| ROBOTS
-    VISION1 --> DEBUG
-    VISION2 --> DEBUG
-```
-
-### ROS 2 패키지 구성
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/fe2cb288-9775-45a6-8745-51c71de446c9" width="560" alt="노드 구조"><br>
+  <sub>노드 구조 — control_node 가 공정을 관리하고, vision · robot 노드가 작업 결과와 요청을 주고받으며, standalone 이 실제 물리 동작을 수행한다</sub>
+</p>
 
 | 패키지 | 역할 |
 |---|---|
-| `nc_interfaces` | `ExecuteCut`, `ExecuteRemove`, `CutTarget`, `RemoveTarget` 인터페이스 |
+| `nc_interfaces` | `ExecuteCut` · `ExecuteRemove` Action, `CutTarget` · `RemoveTarget` 메시지 |
 | `nc_control` | 어망 이송과 전체 공정 상태 머신 |
-| `nc_robot` | Robot 1 절단 및 Robot 2 흡착·수거 Action Server |
+| `nc_robot` | Robot 1 절단 · Robot 2 흡착 · 수거 Action Server, 공용 좌표 변환(`transform_utils`) |
 | `nc_vision` | YOLO11 추론, RGB-D 좌표 계산, Action Client |
-| `nc_vision_debug` | Vision 1·2 디버그 팝업과 대시보드 영상 |
-| `nc_bringup` | PC A·PC B 실행 파일과 공통 파라미터 |
+| `nc_vision_debug` | Vision 1 · 2 디버그 팝업과 대시보드 영상 |
+| `nc_bringup` | PC A · PC B 실행 파일과 공통 파라미터 |
 
----
+### 주요 통신
 
-## 🔄 알고리즘 플로우 차트 (Logic Flow)
+| 방식 | 인터페이스 | 송신 → 수신 | 역할 |
+|---|---|---|---|
+| Topic | `/sim/ready` | Standalone → Control | 시뮬레이션 준비 |
+| Topic | `/net/target_pose` · `/net/current_pose` | Control ↔ Standalone | Net 목표 위치 · 실제 위치 피드백 |
+| Topic | `/station1/net_arrived` · `/station2/net_arrived` | Control → Vision | Station 도착 알림 |
+| Action | `/cut/execute` | Vision 1 → Robot 1 | 절단 목표 작업 요청 |
+| Action | `/remove/execute` | Vision 2 → Robot 2 | 제거 목표 작업 요청 |
+| Topic | `/robot1/motion_command` · `/robot2/motion_command` | Robot → Standalone | TCP Pose 전달 |
+| Topic | `/robot1/motion_done` · `/robot2/motion_done` | Standalone → Robot | 실제 모션 완료 응답 |
+| Topic | `/robot2/suction_command` · `/robot2/suction_state` | Robot 2 ↔ Standalone | 흡착 ON/OFF · 상태 응답 |
+| Topic | `/robot2/release_attached_object` · `/robot2/joint_release_done` | Robot 2 ↔ Standalone | Net Joint 해제 요청 · 결과 |
+| Topic | `/station1/cut_complete` | Robot 1 → Control | Station 1 절단 작업 완료 |
+| Topic | `/station2/complete` | Vision 2 → Control | Station 2 제거 · 재검사 완료 |
+| Topic | `/process/state` · `/process/fault` | Control → 전체 | 공정 상태 · 오류 |
+
+### 동작 흐름
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/7780c9c7-278b-49d2-b130-9902af3f554e" width="300" alt="플로우 차트"><br>
+  <sub>전체 공정 플로우 차트</sub>
+</p>
+
+```
+① 이송   어망이 Station 1 에 도착한다 (실제 위치가 목표 ±2 cm 안에 들어올 때까지 확인)
+② 탐지   Vision 1 이 이물질(plastic_bottle · can · buoy)을 찾고 객체별 절단점 P1 · P2 를 만든다
+③ 절단   Robot 1 이 Approach → Contact → Hold → Retreat 를 P1 · P2 에 대해 수행하고 HOME 으로 돌아간다
+④ 이송   어망이 Station 2 로 이동한다
+⑤ 제거   Vision 2 가 목표를 만들면 Robot 2 가 접근 → 흡착(응답 확인) → Joint 해제 → 이탈 → 배출 → 흡착 해제
+⑥ 재검사  로봇 완료 이후의 새 프레임으로 다시 찍어 이물질이 없으면(연속 빈 프레임) Exit 로 이송한다
+```
+
+<details>
+<summary>텍스트(Mermaid)로 보는 흐름도</summary>
 
 ```mermaid
 flowchart TD
@@ -135,239 +137,141 @@ flowchart TD
     RESET --> MOVE1
 ```
 
----
+</details>
 
-## 💻 개발 환경 (Environment)
+공정 상태는 `WAIT_SIM → MOVING_STATION1 → WAIT_STATION1_COMPLETE → MOVING_STATION2 → WAIT_STATION2_COMPLETE → MOVING_EXIT → COMPLETED`(반복 시 `RESETTING`)이다. 상태가 맞지 않을 때 들어온 완료 메시지는 무시하므로 순서가 뒤바뀌어도 공정 순서가 바뀌지 않는다.
 
-| 항목 | 환경 |
+### 예외 처리
+
+| 상황 | 동작 |
 |---|---|
-| OS | Ubuntu Linux |
-| Middleware | ROS 2 Jazzy, Fast DDS (`rmw_fastrtps_cpp`) |
-| Simulator | NVIDIA Isaac Sim 5.1 |
-| Language | Python 3, Bash, YAML |
-| Vision | Ultralytics YOLO11, OpenCV, NumPy |
-| ROS Libraries | `rclpy`, `cv_bridge`, `message_filters`, `geometry_msgs`, `sensor_msgs` |
-| Simulation Formats | USD, USDC, USDZ, URDF, OBJ, MDL |
+| Robot 1 접촉(CONTACT) 실패 | `RETREAT → RECOVERY_HOME → APPROACH → CONTACT` 로 한 번 더 시도. Home 복구가 실패하면 안전 재후퇴를 한 번 더 시도하고, 그래도 실패하면 해당 점만 건너뛰지 않고 **Action 전체를 abort** |
+| Robot 2 흡착(SUCTION ON) 실패 | **Joint Release 를 요청하지 않고** 흡착을 끈 뒤 `RETREAT → HOME` 으로 안전 복귀, Action 을 실패로 종료 |
+| Net 이동 중 | 목표를 보냈다는 사실이 아니라 실제 위치가 허용오차(`position_tolerance` 0.02 m) 안일 때만 도착 처리 |
+| 상태가 멈춤 | wall clock(STEADY_TIME) 기반 0.25 초 Watchdog 이 상태별 timeout 을 감시(Station 1 · 180 s, Station 2 · 240 s, 리셋 · 45 s). `/clock` 이 멈춰도 동작 |
+| IK 실패 · 모션 timeout | 실패 원인과 목표 pose 를 로그에 남기고 모션 실패로 응답 |
 
-모든 실행 PC는 같은 `ROS_DOMAIN_ID`와 RMW 구현을 사용해야 합니다. Isaac Sim은
-호스트 GPU 드라이버와 설치 버전에 맞는 자체 Python 환경으로 실행합니다.
+## 결과
 
----
+아래는 이 저장소에서 **직접 확인할 수 있는** 값이다.
 
-## ⚙️ 사용 장비 (Hardware Setup)
-
-이 저장소는 아래 장비의 Isaac Sim 디지털 트윈을 기준으로 구성되어 있습니다.
-실제 PC의 CPU·GPU 모델은 저장소에 고정하지 않으며 Isaac Sim 5.1 요구 사양을
-충족해야 합니다.
-
-| 구성 요소 | 모델 / 형식 | 역할 및 주요 ROS 연결 |
+| 항목 | 결과 | 비고 |
 |---|---|---|
-| Robot 1 | Doosan M0609 + Cutter TCP | Station 1 폐어망 절단 |
-| Robot 2 | Doosan M0609 + VG10 | Station 2 폐기물 흡착·수거 |
-| Vision 1 | Intel RealSense D455 (Sim) | `/camera1/rgb/image_raw`, `/camera1/depth/image_raw` |
-| Vision 2 | Intel RealSense D455 (Sim) | `/camera2/rgb/image_raw`, `/camera2/depth/image_raw` |
-| Transport | Net rigid body + 4 carriages | `/net/target_pose`, `/net/current_pose` |
-| Compute A | ROS 2 Control PC | `nc_control`, `nc_robot`, `nc_bringup` |
-| Compute B | Vision GPU PC | `nc_vision`, YOLO11, 선택적 디버그 팝업 |
+| 전체 공정 시연 | Station1 절단 → Station2 흡착 제거 → Vision2 재검사 → Exit 1사이클 | Isaac Sim 시연 영상 기준. 반복 횟수 · 성공률은 **미측정** |
+| 물체 탐지 | YOLO11n · 100 epoch · P 0.9994 · R 1.0 · mAP50 0.995 · mAP50-95 0.994 | **합성 데이터(Isaac Sim) 검증셋** 기준. 실환경 일반화는 미검증 |
+| 좌표 변환 단위 시험 | 5 passed | `nc_vision/test/test_vision_geometry.py` |
+| 빌드 · 제출 점검 | 패키지 6개 빌드 통과 · `verify_submission.py` 통과 | |
 
----
+### 알려진 한계
 
-## 📂 저장소 구성 (Repository Structure)
+- **Robot 2 의 접촉점은 비전 좌표가 아니라 USD 실측 표면점을 쓴다**(`robot2_node.py` 의 `USE_MEASURED_USD_CONTACT_POINTS`). Vision 2 의 Camera → World 변환 결과가 페트병에서 월드 Y 로 약 0.285 m 어긋나 로봇 작업공간을 벗어났고, 근본 원인은 확정하지 못했다. 비전은 클래스 식별과 처리 순서를 맡는다.
+- 반복 검증 · 탐지 정확도 · 제거 성공률 같은 정량 평가를 하지 못했고, 실제 하드웨어(Camera Calibration · TCP 보정 · Gripper Force)에는 적용해 보지 못했다.
+- **기본 진입점과 시연 최종본이 다르다.** 저장소의 기본 진입점 `netclean_standalone.py` 와 `scripts/run_standalone.sh` 는 초기 버전(접촉 순간 Runtime FixedJoint 흡착)이다. 이 README 와 문서의 Standalone 설명은 시연에 쓴 최종본으로 판단되는 `netclean_standalone_v2_home_joint_fix_v2.py` 기준이며, 이 판단은 팀 확인이 필요하다.
+- 폐어망은 Deformable Physics 가 아니라 공정 검증 중심의 Kinematic 이동으로 단순화했다.
 
-```text
-netclean_project/
-├── README.md
-├── THIRD_PARTY_NOTICES.md         # 외부 에셋 출처와 라이선스
-├── docs/ASSET_MANAGEMENT.md       # 대용량 에셋·제출 관리 기준
-├── LICENSES/Apache-2.0.txt
-├── models/netclean_yolo11n/       # YOLO 설정과 best.pt
-├── ros2_ws/src/                   # 6개 ROS 2 패키지
-├── scripts/
-│   ├── run_standalone.sh          # Isaac Sim 실행 스크립트
-│   ├── verify_submission.py       # 제출 구성 자동 점검
-│   └── make_submission_archive.sh # 추적 파일만 제출 ZIP으로 생성
-└── sim/
-    ├── assets/project1/           # 메인 USD와 참조 에셋
-    ├── cobot3_ws/                 # Robot 1 상대 참조 USD
-    ├── config/sim_config.yaml
-    └── standalone/                # Isaac Sim Python 실행 계층
-```
+## 실행 방법
 
-- 메인 시뮬레이션 파일: `sim/assets/project1/simulation_integration_v3.usd`
-- M0609 URDF: `sim/assets/project1/robot2_sample/m0609_isaac_sim.urdf`
-- M0609 DAE 메시: `sim/assets/project1/robot2_sample/meshes/`
-- 기본 standalone: `sim/standalone/netclean_standalone.py`
-- `build/`, `install/`, `log/` 및 ZIP 백업 파일은 Git 추적에서 제외됩니다.
+**1 은 GPU · Isaac Sim 없이 Ubuntu 24.04 PC 한 대에서 따라 하면 된다.**
 
----
+### 1. 로봇 · 시뮬레이터 없이 확인할 수 있는 것
 
-## 📦 의존성 설치 (Installation)
-
-### 1. 저장소 받기
+ROS 2 Jazzy 가 설치되어 있어야 한다([공식 안내](https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html)).
 
 ```bash
-git clone https://github.com/suuuhululu/isaac_ros2_waste_net_cutting2.git
+git clone https://github.com/abyssGo/isaac_ros2_waste_net_cutting2.git
 cd isaac_ros2_waste_net_cutting2
+sudo apt install -y python3-colcon-common-extensions python3-pytest
 python3 scripts/verify_submission.py
+cd ros2_ws && source /opt/ros/jazzy/setup.bash && colcon build --symlink-install && cd ..
+python3 -m pytest ros2_ws/src/nc_vision/test/test_vision_geometry.py -q
 ```
 
-현재 저장소의 필수 에셋은 일반 Git으로 관리되므로 별도의 666MB 원본 압축본이나
-Git LFS 다운로드가 필요하지 않습니다. 위 검사가 통과하면 USD, URDF 메시, ROS 2
-패키지와 YOLO 가중치가 모두 내려온 상태입니다.
+| 확인 | 통과 기준 |
+|---|---|
+| `verify_submission.py` 마지막 줄 | `제출 점검 통과` |
+| 빌드 마지막 줄 | `Summary: 6 packages finished` |
+| 좌표 변환 시험 | `5 passed` |
 
-### 2. ROS 2 의존성 설치
+### 2. 전체 시스템 (Isaac Sim 필요)
 
-ROS 2 Jazzy가 설치된 Ubuntu 환경에서 실행합니다.
-
-```bash
-sudo apt update
-sudo apt install python3-colcon-common-extensions python3-rosdep
-
-# rosdep을 처음 사용하는 PC에서만 실행
-sudo rosdep init
-rosdep update
-
-rosdep install --from-paths ros2_ws/src --ignore-src -r -y
-```
-
-### 3. Python 비전 라이브러리 설치
-
-YOLO 추론과 영상 처리를 위한 라이브러리입니다. ROS 2가 사용하는 Python 환경에
-설치해야 합니다.
-
-```bash
-python3 -m pip install ultralytics
-```
-
-### 4. ROS 2 워크스페이스 빌드
-
-```bash
-cd ros2_ws
-source /opt/ros/jazzy/setup.bash
-colcon build --symlink-install
-cd ..
-```
-
----
-
-## 🚀 실행 순서 (How to Run)
-
-전체 시스템은 아래 순서로 실행합니다. 여러 PC를 사용할 때는 동일한 저장소와 ROS 2
-환경을 준비하고 모든 터미널에서 Domain ID를 통일합니다.
-
-### 1. 공통 ROS 2 통신 설정
+NVIDIA GPU, Isaac Sim 5.1, ROS 2 Jazzy 가 설치된 Ubuntu 환경이 필요하다. 모든 PC 의 터미널에서 같은 값을 쓴다.
 
 ```bash
 export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 export ROS_DOMAIN_ID=144
+python3 -m pip install ultralytics     # Vision PC
+rosdep install --from-paths ros2_ws/src --ignore-src -r -y
+cd ros2_ws && source /opt/ros/jazzy/setup.bash && colcon build --symlink-install && cd ..
 ```
 
-### 2. Isaac Sim 실행 (Simulation PC)
+| 순서 | PC | 명령 |
+|---|---|---|
+| ① | Simulation PC | `export ISAAC_SIM_ROOT=/absolute/path/to/isaacsim` → `./scripts/run_standalone.sh` (GUI 없이: `--headless`) |
+| ② | PC A | `source ros2_ws/install/setup.bash` → `ros2 launch nc_bringup pc_a.launch.py` |
+| ③ | PC B | `source ros2_ws/install/setup.bash` → `ros2 launch nc_bringup pc_b.launch.py` |
+| ④ (선택) | PC B | `ros2 launch nc_vision_debug debug_popups.launch.py` |
 
-ROS 2 Bridge가 포함된 Isaac Sim 설치 경로를 지정한 뒤 메인 standalone을 실행합니다.
-스크립트가 저장소 내부의 메인 USD와 URDF를 자동으로 찾습니다.
+`run_standalone.sh` 는 기본 진입점 `netclean_standalone.py` 를 실행한다. 시연 최종본(`netclean_standalone_v2_home_joint_fix_v2.py`)으로 실행하려면 `scripts/run_standalone.sh` 마지막 줄의 파일 경로를 바꿔 사용한다.
 
-```bash
-export ISAAC_SIM_ROOT=/absolute/path/to/isaacsim
-./scripts/run_standalone.sh
-```
+`pc_b_v2.launch.py` 는 `pc_b.launch.py` 와 같은 V2 비전을 띄우는 호환용이므로 두 파일을 동시에 실행하지 않는다. 상세 동작은 [README_INSTALL.md](README_INSTALL.md) 에 있다.
 
-GUI 없이 실행하려면 다음 옵션을 사용합니다.
-
-```bash
-./scripts/run_standalone.sh --headless
-```
-
-### 3. PC A 실행 (Control & Robots)
+### 3. 동작 확인
 
 ```bash
-source /opt/ros/jazzy/setup.bash
-source ros2_ws/install/setup.bash
-ros2 launch nc_bringup pc_a.launch.py
-```
-
-### 4. PC B 실행 (Vision)
-
-```bash
-source /opt/ros/jazzy/setup.bash
-source ros2_ws/install/setup.bash
-ros2 launch nc_bringup pc_b.launch.py
-```
-
-현재 `pc_b.launch.py`는 Depth 보정 V2 Vision 1·2를 실행합니다.
-`pc_b_v2.launch.py`는 명시적 V2 실행을 위한 호환용 launch이며 두 파일을 동시에
-실행하면 안 됩니다.
-
-### 5. 디버그 팝업 실행 (선택)
-
-```bash
-source /opt/ros/jazzy/setup.bash
-source ros2_ws/install/setup.bash
-ros2 launch nc_vision_debug debug_popups.launch.py
-```
-
-팝업 토픽과 Vision V2 세부 동작은 [README_INSTALL.md](README_INSTALL.md)를
-참고하십시오.
-
----
-
-## ✅ 동작 확인 (Verification)
-
-먼저 제출 파일 구성과 URDF 상대경로를 검사합니다.
-
-```bash
-python3 scripts/verify_submission.py
-```
-
-```bash
+python3 scripts/verify_submission.py        # 제출 구성 · 상대경로 점검
 ros2 topic echo /process/state
 ros2 topic echo /sim/ready --once
-ros2 topic echo /net/current_pose --once
-ros2 action list
+ros2 action list                            # /cut/execute, /remove/execute 가 보이면 정상
+python3 -m pytest ros2_ws/src/nc_vision/test/test_vision_geometry.py -q
 ```
 
-정상 상태에서는 `/cut/execute`, `/remove/execute` Action과 카메라·공정 토픽이
-표시됩니다. 코드 변경 후에는 다음 명령으로 핵심 비전 좌표 테스트를 실행할 수 있습니다.
+> `OmniPBR.mdl` · `OmniGlass.mdl` 과 일부 NVIDIA Base Material 은 Isaac Sim 기본 · 온라인 에셋을 쓰므로 재질 표시를 위해 접근이 필요하다. 대용량 에셋 관리 기준은 [에셋 관리 문서](docs/ASSET_MANAGEMENT.md) 를 본다.
 
-```bash
-cd ros2_ws
-source /opt/ros/jazzy/setup.bash
-source install/setup.bash
-python3 -m pytest src/nc_vision/test/test_vision_geometry.py -q
+## 개발 환경 · 사용 장비
+
+| 항목 | 값 |
+|---|---|
+| OS · 미들웨어 | Ubuntu 24.04 · ROS 2 Jazzy · Fast DDS(`rmw_fastrtps_cpp`) |
+| 시뮬레이터 | NVIDIA Isaac Sim 5.1.0 (USD · Articulation · Lula IK · ROS 2 Bridge) |
+| 언어 · 라이브러리 | Python 3 · `rclpy` · `cv_bridge` · `message_filters` · OpenCV · NumPy · Ultralytics YOLO11 |
+| 협업 | Git/GitHub · Slack · Notion · Google Drive |
+
+| 구성 요소 | 모델 · 형식 | 역할 · ROS 연결 |
+|---|---|---|
+| Robot 1 | Doosan M0609 + Cutter TCP(Visual End-Effector) | Station 1 폐어망 절단 |
+| Robot 2 | Doosan M0609 + VG10 Suction Gripper | Station 2 폐기물 흡착 · 수거 |
+| Camera 1 · 2 | Intel RealSense D455(시뮬레이션) | `/camera1/*` · `/camera2/*` RGB · Depth |
+| Transport | Net rigid body + Carriage 4개 | `/net/target_pose` · `/net/current_pose` |
+
+## 프로젝트 구조
+
+```text
+isaac_ros2_waste_net_cutting2/
+├── README.md
+├── README_INSTALL.md              설치 · Vision V2 상세
+├── THIRD_PARTY_NOTICES.md         외부 에셋 출처와 라이선스
+├── LICENSES/Apache-2.0.txt
+├── docs/                          ASSET_MANAGEMENT.md — 대용량 에셋 선별 기준과 제출 방법
+├── models/netclean_yolo11n/       YOLO 설정과 best.pt
+├── ros2_ws/src/                   ROS 2 패키지 6개
+├── scripts/                       run_standalone.sh · verify_submission.py · make_submission_archive.sh
+├── sim/
+│   ├── assets/project1/           메인 USD(simulation_integration_v3.usd) · M0609 URDF · 참조 에셋
+│   ├── cobot3_ws/                 Robot 1 상대 참조 USD
+│   ├── config/sim_config.yaml
+│   └── standalone/
+│       ├── netclean_standalone.py                        기본 진입점(초기 버전)
+│       ├── netclean_standalone_v2_home_joint_fix_v2.py   시연 최종본으로 판단
+│       └── (v2 · v2_home_joint · fix · v4 · make_v4)      개발 이력 버전
 ```
 
----
+## 팀 · 라이선스
 
-## 📦 대용량 에셋과 제출 방법
+| 이름 | 역할 |
+|---|---|
+| 이수현(팀장) | 비전 알고리즘 설계 · Replicator 합성 데이터 생성 · YOLO 학습 · 시스템 병합 · 테스트 |
+| 박성현 | 인터페이스 설계 · 로봇 제어 알고리즘 |
+| 박진용 | 로봇 제어 알고리즘 설계 · standalone 설계 · 시스템 병합 · 테스트 |
+| 서동권 | USD · 에셋 제작 · Isaac Sim 환경 구축 |
 
-제공된 `isaac_simulation_intergration (2).zip`은 약 666MB이지만 원본·구버전·중복
-재질을 함께 담은 보관용 파일입니다. 이 ZIP 자체는 Git에 올리지 않습니다. 메인
-USD의 실제 의존성만 `sim/assets/project1/`에 파일 단위로 포함했으며, 현재 가장 큰
-추적 파일은 GitHub의 일반 Git 단일 파일 제한보다 작으므로 Git LFS도 필요하지
-않습니다.
-
-GitHub 링크 제출 시에는 `main` 브랜치 URL과 최종 커밋 해시를 제출합니다. 단일 ZIP
-파일 제출이 필요하면 모든 변경을 커밋한 뒤 다음 명령을 실행합니다.
-
-```bash
-./scripts/make_submission_archive.sh
-```
-
-스크립트는 Git 최종 커밋만 묶기 때문에 금지된 `build`, `install`, `log`와 로컬 ZIP
-백업이 들어가지 않습니다. 향후 단일 필수 에셋이 100MiB를 넘을 때만 Git LFS를
-적용합니다. 선별 기준과 LFS 절차는
-[에셋 관리 문서](docs/ASSET_MANAGEMENT.md)를 참고하십시오.
-
----
-
-## ⚠️ 주의사항
-
-- `pc_b.launch.py`와 `pc_b_v2.launch.py`를 동시에 실행하지 마십시오.
-- 모든 PC에서 `ROS_DOMAIN_ID`와 `RMW_IMPLEMENTATION`을 동일하게 설정하십시오.
-- `OmniPBR.mdl`, `OmniGlass.mdl`과 일부 NVIDIA Base Material은 Isaac Sim 기본 또는
-  온라인 에셋을 사용하므로 재질 표시를 위해 해당 에셋에 접근할 수 있어야 합니다.
-- 전체 실행은 NVIDIA GPU, Isaac Sim 5.1과 ROS 2 Jazzy가 설치된 Ubuntu 환경을
-  전제로 합니다. `git clone`은 프로젝트 파일을 제공하지만 이 시스템 의존성까지
-  설치하지는 않습니다.
-- `sim/standalone/`의 버전명 파일은 개발 이력용이며 기본 진입점은
-  `netclean_standalone.py`입니다.
+[Apache License 2.0](LICENSES/Apache-2.0.txt). 외부 에셋의 출처와 라이선스는 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) 를 따른다.
