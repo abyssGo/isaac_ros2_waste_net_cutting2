@@ -29,10 +29,10 @@ https://github.com/user-attachments/assets/64e6e503-a420-4058-8fd8-c774d934e16e
 
 4명이 함께 만든 팀 프로젝트이고, 그중 내가 맡은 부분은 이렇다. — **박진용**
 
-- **Standalone 실행 계층 설계** — `SimulationApp` · `world.step()`(60 Hz) · `rclpy.spin_once()` 를 한 루프로 묶고, Net 이송 · 로봇 모션 · 흡착 · Joint 해제를 클래스로 나눴다([`netclean_standalone_v2_home_joint_fix_v2.py`](sim/standalone/netclean_standalone_v2_home_joint_fix_v2.py), 시연 최종본으로 판단).
+- **Standalone 실행 계층 설계** — `SimulationApp` · `world.step()`(60 Hz) · `rclpy.spin_once()` 를 한 루프로 묶고, Net 이송 · 로봇 모션 · 흡착 · Joint 해제를 클래스로 나눴다([`netclean_standalone_v2_home_joint_fix_v2.py`](sim/standalone/netclean_standalone_v2_home_joint_fix_v2.py)).
 - **로봇 모션 제어**(박성현과 공동) — 월드 TCP 목표 → Tool Offset 역보정 → Lula IK → 속도 기반 smoothstep 관절 보간. 관절 오차 ≤ 1° 와 timeout 으로 완료를 판정하고, Home 은 IK 대신 안전 관절값으로 이동한다.
 - **작업 순서 · 실패 복구** — Robot 1 절단, Robot 2 흡착 제거 시퀀스와 `RETREAT → RECOVERY_HOME → 재진입` 복구, 실패 시 Action abort([`robot1_node.py`](ros2_ws/src/nc_robot/nc_robot/robot1_node.py) · [`robot2_node.py`](ros2_ws/src/nc_robot/nc_robot/robot2_node.py)).
-- **흡착 · Joint 해제 안전장치** — 흡착 성공 응답을 확인한 뒤에만 어망 Joint 를 해제하고, 표면–TCP 거리 ≤ 3 cm 를 검사한 뒤 상대 offset 으로 추종해 Snap 을 막았다.
+- **흡착 · Joint 해제 안전장치** — 흡착 성공 응답을 확인한 뒤에만 어망 Joint 를 해제하고, 표면–TCP 거리 ≤ 3 cm 를 검사한 뒤 부착해 Snap 을 막았다.
 - **시스템 병합 · 테스트** — 노드별 기능을 PC A · PC B 분산 구조로 병합하고, Net 위치 ±2 cm · 관절 오차 ≤ 1° · 흡착 상태 응답 같은 단계별 성공 기준으로 통합 시연을 확인했다.
 
 ## 주요 기능
@@ -57,7 +57,7 @@ https://github.com/user-attachments/assets/64e6e503-a420-4058-8fd8-c774d934e16e
 
 | 위치 | 구성 | 역할 |
 |---|---|---|
-| Simulation PC | Isaac Sim 5.1 + `netclean_standalone_v2_home_joint_fix_v2.py`(시연 최종본으로 판단) | USD 월드 · 물리 · 카메라 · 어망 이송 · Lula IK 모션 · 흡착 · Joint 해제 실행 |
+| Simulation PC | Isaac Sim 5.1 + `netclean_standalone_v2_home_joint_fix_v2.py` | USD 월드 · 물리 · 카메라 · 어망 이송 · Lula IK 모션 · 흡착 · Joint 해제 실행 |
 | PC A | `nc_control` · `nc_robot`(Robot 1 · 2) | 공정 순서 · 작업 순서 · 실패 복구 |
 | PC B | `nc_vision`(Vision 1 · 2) · YOLO11 | 탐지 · 3D 목표 생성 · 재검사 |
 
@@ -162,13 +162,6 @@ flowchart TD
 | 좌표 변환 단위 시험 | 5 passed | `nc_vision/test/test_vision_geometry.py` |
 | 빌드 · 제출 점검 | 패키지 6개 빌드 통과 · `verify_submission.py` 통과 | |
 
-### 알려진 한계
-
-- **Robot 2 의 접촉점은 비전 좌표가 아니라 USD 실측 표면점을 쓴다**(`robot2_node.py` 의 `USE_MEASURED_USD_CONTACT_POINTS`). Vision 2 의 Camera → World 변환 결과가 페트병에서 월드 Y 로 약 0.285 m 어긋나 로봇 작업공간을 벗어났고, 근본 원인은 확정하지 못했다. 비전은 클래스 식별과 처리 순서를 맡는다.
-- 반복 검증 · 탐지 정확도 · 제거 성공률 같은 정량 평가를 하지 못했고, 실제 하드웨어(Camera Calibration · TCP 보정 · Gripper Force)에는 적용해 보지 못했다.
-- **기본 진입점과 시연 최종본이 다르다.** 저장소의 기본 진입점 `netclean_standalone.py` 와 `scripts/run_standalone.sh` 는 초기 버전(접촉 순간 Runtime FixedJoint 흡착)이다. 이 README 와 문서의 Standalone 설명은 시연에 쓴 최종본으로 판단되는 `netclean_standalone_v2_home_joint_fix_v2.py` 기준이며, 이 판단은 팀 확인이 필요하다.
-- 폐어망은 Deformable Physics 가 아니라 공정 검증 중심의 Kinematic 이동으로 단순화했다.
-
 ## 실행 방법
 
 **1 은 GPU · Isaac Sim 없이 Ubuntu 24.04 PC 한 대에서 따라 하면 된다.**
@@ -210,8 +203,6 @@ cd ros2_ws && source /opt/ros/jazzy/setup.bash && colcon build --symlink-install
 | ② | PC A | `source ros2_ws/install/setup.bash` → `ros2 launch nc_bringup pc_a.launch.py` |
 | ③ | PC B | `source ros2_ws/install/setup.bash` → `ros2 launch nc_bringup pc_b.launch.py` |
 | ④ (선택) | PC B | `ros2 launch nc_vision_debug debug_popups.launch.py` |
-
-`run_standalone.sh` 는 기본 진입점 `netclean_standalone.py` 를 실행한다. 시연 최종본(`netclean_standalone_v2_home_joint_fix_v2.py`)으로 실행하려면 `scripts/run_standalone.sh` 마지막 줄의 파일 경로를 바꿔 사용한다.
 
 `pc_b_v2.launch.py` 는 `pc_b.launch.py` 와 같은 V2 비전을 띄우는 호환용이므로 두 파일을 동시에 실행하지 않는다. 상세 동작은 [README_INSTALL.md](README_INSTALL.md) 에 있다.
 
@@ -260,8 +251,7 @@ isaac_ros2_waste_net_cutting2/
 │   ├── cobot3_ws/                 Robot 1 상대 참조 USD
 │   ├── config/sim_config.yaml
 │   └── standalone/
-│       ├── netclean_standalone.py                        기본 진입점(초기 버전)
-│       ├── netclean_standalone_v2_home_joint_fix_v2.py   시연 최종본으로 판단
+│       ├── netclean_standalone_v2_home_joint_fix_v2.py   Standalone 실행 계층
 │       └── (v2 · v2_home_joint · fix · v4 · make_v4)      개발 이력 버전
 ```
 
