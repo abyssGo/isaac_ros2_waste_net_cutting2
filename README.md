@@ -12,6 +12,12 @@ Robot 1이 주변 어망을 절단하고, Station 2에서는 Robot 2가 폐기�
 
 ---
 
+## 🎬 시연 영상 (Demo)
+
+https://github.com/user-attachments/assets/130d985c-dd07-44e1-abc9-826620ab5352
+
+---
+
 ## 📌 주요 기능 (Key Features)
 
 ### 1. 반복 공정 및 어망 이송 (Process Control)
