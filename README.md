@@ -36,30 +36,30 @@
 
 https://github.com/user-attachments/assets/64e6e503-a420-4058-8fd8-c774d934e16e
 
-어망이 Station 1에 도착해 절단되고, Station 2에서 흡착 제거 · 재검사를 거쳐 Exit로 나가는 1 Cycle입니다.
+어망이 Station 1에 도착해 절단되고, Station 2에서 흡착 제거 · 재검사를 거쳐 Exit로 나가는 전체 공정입니다.
 
-### 🏭 공장 배경에서 6 Cycle 연속 실행
+### 🏭 공장 환경 전체 공정 — 이송 · 절단 · 제거 · 재검사
 
 <p align="center">
-  <img src="docs/images/factory_6cycles.gif" width="720" alt="공장 배경에서 6 Cycle 연속 실행">
+  <img src="docs/images/factory_process.gif" width="720" alt="공장 환경에서의 전체 공정">
 </p>
 
-공장 배경에서 어망 이송 → 절단 → 흡착 제거 → 재검사 → Exit를 6 Cycle 연속으로 실행한 Isaac Sim 화면입니다(8배속, 1분 47초).
+공장 배경 월드에서 어망 이송 → 절단 → 흡착 제거 → 재검사 → Exit로 이어지는 전체 공정이 반복되는 Isaac Sim 화면입니다(8배속, 1분 47초).
 
-### 🎞️ 실제 실행 장면 (RTX 3080 · 3번째 Cycle)
+### 🎞️ 단계별 실행 장면
 
 | Station 1 — Robot 1 절단 | Station 2 — Robot 2 흡착 제거 · 재검사 |
 |:---:|:---:|
-| <img src="docs/images/station1_cut_cycle3.gif" width="360" alt="Station 1 절단"> | <img src="docs/images/station2_remove_cycle3.gif" width="360" alt="Station 2 흡착 제거"> |
+| <img src="docs/images/station1_cut.gif" width="360" alt="Station 1 절단"> | <img src="docs/images/station2_remove.gif" width="360" alt="Station 2 흡착 제거"> |
 
 <p align="center">
-  <img src="docs/images/full_cycle_4x.gif" width="480" alt="1 Cycle 전체 4배속"><br>
-  <sub>1 Cycle 전체(약 130 s)를 4배속으로 본 화면</sub>
+  <img src="docs/images/process_4x.gif" width="480" alt="전체 공정 한 바퀴 4배속"><br>
+  <sub>전체 공정 한 바퀴(약 130 s)를 4배속으로 본 화면</sub>
 </p>
 
 <p align="center">
   <img src="docs/images/process_sheet.png" width="900" alt="탐지 → 절단 → 흡착 제거 → 재검사 4단계"><br>
-  <sub>탐지(YOLO + 절단점 P1 · P2) → Robot 1 절단 → Robot 2 흡착 제거 → 재검사(빈 어망) — 실제 Cycle 3</sub>
+  <sub>탐지(YOLO + 절단점 P1 · P2) → Robot 1 절단 → Robot 2 흡착 제거 → 재검사(빈 어망) — 실제 실행 화면</sub>
 </p>
 
 ## 💡 한눈에
@@ -72,7 +72,7 @@ https://github.com/user-attachments/assets/64e6e503-a420-4058-8fd8-c774d934e16e
 | 제거한 뒤 정말 비었는지 확인할 방법이 없다 | 로봇이 끝난 뒤 새 프레임으로 **재검사**해서 연속 빈 화면일 때만 Exit로 보냅니다 |
 
 ```text
-[Ready] → ① Station 1 도착 → ② Vision 1 탐지(P1 · P2) → ③ Robot 1 절단 → ④ Station 2 이송 → ⑤ Vision 2 목표 → Robot 2 흡착 제거 → ⑥ 재검사(빈 화면) → Exit → 리셋 → 다음 Cycle
+[Ready] → ① Station 1 도착 → ② Vision 1 탐지(P1 · P2) → ③ Robot 1 절단 → ④ Station 2 이송 → ⑤ Vision 2 목표 → Robot 2 흡착 제거 → ⑥ 재검사(빈 화면) → Exit → 리셋 → 다음 어망
 ```
 
 <details>
@@ -89,7 +89,7 @@ https://github.com/user-attachments/assets/64e6e503-a420-4058-8fd8-c774d934e16e
 YOLO11n으로 `plastic_bottle` · `can` · `buoy`를 찾고, RGB · Depth를 동기화해 `Pixel(u, v) + Depth + CameraInfo K`를 카메라 좌표 → 월드 좌표로 바꿉니다. Vision 1은 객체마다 절단점 P1 · P2를, Vision 2는 흡착 목표를 만듭니다. 페트병은 투명 · 반사로 Depth가 흔들려 유효 Depth 중앙값을 씁니다.
 
 <p align="center">
-  <img src="docs/images/vision1_detection_cycle3.png" width="420" alt="Vision 1 탐지"><br>
+  <img src="docs/images/vision1_detection.png" width="420" alt="Vision 1 탐지"><br>
   <sub>Vision 1 — 병 0.96 · 캔 0.97 · 부표 0.98, 객체마다 절단점 P1(청록) · P2(자홍)</sub>
 </p>
 
@@ -106,7 +106,7 @@ YOLO11n으로 `plastic_bottle` · `can` · `buoy`를 찾고, RGB · Depth를 동
 제거 뒤에는 로봇이 끝난 **이후에 찍힌 새 프레임**으로 다시 탐지하고, 빈 프레임이 연속으로 확인되면 Station 2를 끝냅니다.
 
 <p align="center">
-  <img src="docs/images/vision2_recheck_empty_cycle5.png" width="420" alt="Vision 2 재검사"><br>
+  <img src="docs/images/vision2_recheck.png" width="420" alt="Vision 2 재검사"><br>
   <sub>Vision 2 재검사 — 제거 후 빈 어망</sub>
 </p>
 
@@ -228,13 +228,13 @@ flowchart TD
 
 ## 🧩 트러블슈팅
 
-RTX 3080에서 Isaac Sim + ROS 2를 실제로 돌리며 막힌 곳 7가지를 원인부터 좁혀 코드로 고쳤습니다. 대표 4건이고 나머지 3건은 접어 두었습니다. 상세 분석은 [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)에 있습니다.
+Isaac Sim + ROS 2로 전체 공정을 실행하며 막힌 곳 7가지를 원인부터 좁혀 하나씩 고쳤습니다. 대표 4건이고 나머지 3건은 접어 두었습니다. 상세 분석은 [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)에 있습니다.
 
 | 문제 | 원인 | 어떻게 해결했나 | 결과 |
 |---|---|---|---|
-| 리셋 뒤 Vision 1이 116 ~ 137 s 동안 무응답 | 리셋으로 시뮬 시간이 0으로 되감기는데 RGB-D 동기화 큐에 리셋 전 프레임이 남아, 새 프레임을 "가장 오래된 것"으로 버림 | 도착 시 · 타임스탬프가 되감길 때 큐를 비우는 `sync_utils.py` 추가(실제 동기화기를 재현하는 단위 시험 포함) | **6 Cycle 연속 완주** |
-| Robot 2 흡착이 가끔 거부(표면 거리 3.3 ~ 4.7 cm > 허용 3 cm) | Vision 2가 어망이 멈추기 전 프레임을 써서 목표가 0 ~ 5 cm 밀림 | `arrival_settle_sec`: 도착 후 첫 프레임 시각 + 1 s 이후의 프레임만 사용(카메라 시각 기준) | 페트병 검출 위치 **6 Cycle 동일**(129 px), 흡착 거부 **0**, 제거 **18/18** |
-| 페트병 흡착 여유가 3 mm뿐(표면 거리 2.70 cm / 허용 3 cm) | 흡착컵이 튀어나온 면에 먼저 닿아 TCP가 옆으로 4 ~ 7 cm 미끄러짐 | CONTACT를 표면 12 mm 앞에서 정지, 대기를 시뮬 시간 기준으로 | 흡착 거리 **0.37 ~ 0.61 cm**, 공장 배경 월드도 6 Cycle 완주 |
+| 리셋 뒤 Vision 1이 116 ~ 137 s 동안 무응답 | 리셋으로 시뮬 시간이 0으로 되감기는데 RGB-D 동기화 큐에 리셋 전 프레임이 남아, 새 프레임을 "가장 오래된 것"으로 버림 | 도착 시 · 타임스탬프가 되감길 때 큐를 비우는 `sync_utils.py` 추가(실제 동기화기를 재현하는 단위 시험 포함) | **전체 공정 연속 완주** |
+| Robot 2 흡착이 가끔 거부(표면 거리 3.3 ~ 4.7 cm > 허용 3 cm) | Vision 2가 어망이 멈추기 전 프레임을 써서 목표가 0 ~ 5 cm 밀림 | `arrival_settle_sec`: 도착 후 첫 프레임 시각 + 1 s 이후의 프레임만 사용(카메라 시각 기준) | 페트병 검출 위치 **매번 동일**(129 px), 흡착 거부 **0**, 제거 **18/18** |
+| 페트병 흡착 여유가 3 mm뿐(표면 거리 2.70 cm / 허용 3 cm) | 흡착컵이 튀어나온 면에 먼저 닿아 TCP가 옆으로 4 ~ 7 cm 미끄러짐 | CONTACT를 표면 12 mm 앞에서 정지, 대기를 시뮬 시간 기준으로 | 흡착 거리 **0.37 ~ 0.61 cm**, 공장 배경 월드도 완주 |
 | Robot 1이 일부 절단점에서 IK 실패 → 재시도 후 skip | 어망 가장자리의 위쪽 절단점이 M0609 도달 범위를 6.5 ~ 11.4 mm 넘음(FK로 재현) | 접촉 전 도달 검사, 범위 밖이면 절단선을 따라 안쪽으로 당기고 안 되면 바로 skip | IK 실패 **0**, 절단점 **36/36** |
 
 <details>
@@ -242,16 +242,16 @@ RTX 3080에서 Isaac Sim + ROS 2를 실제로 돌리며 막힌 곳 7가지를 �
 
 | 문제 | 원인 | 어떻게 해결했나 | 결과 |
 |---|---|---|---|
-| `--headless`에서 카메라 토픽이 없음 | standalone이 `world.step(render=not headless)`로 렌더링을 건너뜀 | 헤드리스에서도 렌더링(`RENDER_FRAMES`), 물리만 돌릴 때는 `--no-render` | 헤드리스 6 Cycle 완주 |
+| `--headless`에서 카메라 토픽이 없음 | standalone이 `world.step(render=not headless)`로 렌더링을 건너뜀 | 헤드리스에서도 렌더링(`RENDER_FRAMES`), 물리만 돌릴 때는 `--no-render` | 헤드리스 실행 완주 |
 | Vision 1이 매 프레임 `KeyError: 16`, Station 1 timeout | pip OpenCV 5와 Jazzy `cv_bridge`(OpenCV 4.6 빌드)의 `cv2_to_imgmsg` 충돌 | `image_msg_utils.py`로 디버그 이미지를 직접 변환 | Station 1 통과 |
-| 2번째 Cycle에서 Vision 1이 도착 신호를 무시 | Control이 `/stationN/net_arrived`를 False로 되돌리지 않아 Vision이 재무장되지 않음 | 완료 · 오류 시 False 발행, 대기 중 1 s마다 True 재발행 | 반복 Cycle 정상 |
+| 두 번째 어망부터 Vision 1이 도착 신호를 무시 | Control이 `/stationN/net_arrived`를 False로 되돌리지 않아 Vision이 재무장되지 않음 | 완료 · 오류 시 False 발행, 대기 중 1 s마다 True 재발행 | 반복 공정 정상 |
 
 </details>
 
 ## 📊 결과
 
 <p align="center">
-  <img src="https://img.shields.io/badge/6%20Cycle-%EC%97%B0%EC%86%8D%20%EC%99%84%EC%A3%BC-2ea44f?style=for-the-badge" alt="6 Cycle 연속 완주">
+  <img src="https://img.shields.io/badge/%EC%A0%84%EC%B2%B4%20%EA%B3%B5%EC%A0%95-%EC%97%B0%EC%86%8D%20%EC%99%84%EC%A3%BC-2ea44f?style=for-the-badge" alt="전체 공정 연속 완주">
   <img src="https://img.shields.io/badge/%EC%A0%88%EB%8B%A8-36%2F36-2ea44f?style=for-the-badge" alt="절단 36/36">
   <img src="https://img.shields.io/badge/%ED%9D%A1%EC%B0%A9%20%EC%A0%9C%EA%B1%B0-18%2F18-2ea44f?style=for-the-badge" alt="흡착 제거 18/18">
   <img src="https://img.shields.io/badge/%ED%9D%A1%EC%B0%A9%20%EA%B1%B0%EB%B6%80-0-1f6feb?style=for-the-badge" alt="흡착 거부 0">
@@ -260,12 +260,12 @@ RTX 3080에서 Isaac Sim + ROS 2를 실제로 돌리며 막힌 곳 7가지를 �
 
 | 지표 | 결과 |
 |---|---|
-| 전체 흐름 | 최종 설정(Vision 2 좌표 사용)으로 **6 Cycle 연속 완주** — 원본 월드 · 헤드리스(16차), 공장 배경 월드 · GUI(17차) 모두 |
+| 전체 흐름 | **전체 공정 연속 완주** — 원본 월드와 공장 배경 월드 모두 |
 | 절단 | 절단점 **36/36** · IK 실패 0 (도달 범위 안쪽으로 당긴 점 7개) |
 | 흡착 제거 | 병 · 캔 · 부표 **18/18** · 흡착 거부 0 · 페트병 흡착 표면 거리 0.37 ~ 0.61 cm (허용 3 cm) |
 | Vision 2 위치 정확도 | 물체 중심 대비 가로 · 세로 **1.4 cm 이내**(흡착 허용 3 cm) |
-| 물체 탐지 | YOLO11n · 100 epoch · P 0.9994 · R 1.0 · mAP50 0.995 · mAP50-95 0.994 (합성 데이터 검증셋), GPU 추론 6.1 ms/프레임 |
-| Cycle 시간(벽시계) | 원본 월드 121.1 ~ 148.4 s · 공장 배경 134.6 ~ 142.9 s |
+| 물체 탐지 | YOLO11n · 100 epoch · P 0.9994 · R 1.0 · mAP50 0.995 · mAP50-95 0.994 (합성 데이터 검증셋) · 추론 6.1 ms/프레임 |
+| 공정 1회 소요 시간 | 원본 월드 121 ~ 148 s · 공장 배경 월드 135 ~ 143 s |
 | 시스템 | 카메라 2대 RGB-D 약 46 Hz · 빌드 패키지 6개 · 단위 시험 **18 passed** |
 
 <details>
@@ -280,13 +280,11 @@ RTX 3080에서 Isaac Sim + ROS 2를 실제로 돌리며 막힌 곳 7가지를 �
 
 </details>
 
-> 위 수치는 RTX 3080 PC에서 Isaac Sim 5.1 · 최종 설정으로 측정한 값입니다.
-
 ## 🌱 배운 점
 
-- 시뮬레이션에는 시계가 셋(`/clock`, 카메라 프레임 시각, 벽시계)이고, 리셋하면 서로 어긋납니다. 대기 · 동기화 · 판정이 어느 시계를 쓰는지 정해 두지 않으면 증상이 사이클마다 달라져 원인을 찾기 어려웠습니다.
+- 시뮬레이션에는 시계가 셋(`/clock`, 카메라 프레임 시각, 벽시계)이고, 리셋하면 서로 어긋납니다. 대기 · 동기화 · 판정이 어느 시계를 쓰는지 정해 두지 않으면 증상이 실행마다 달라져 원인을 찾기 어려웠습니다.
 - "IK가 가끔 실패한다"는 증상을 FK로 재현해 보니 솔버 문제가 아니라 기구학적으로 도달할 수 없는 점이었습니다. 로그와 재현 코드로 원인을 확정한 뒤 고치는 편이 빨랐습니다.
-- 라이브러리 충돌(OpenCV 5와 `cv_bridge`)과 시간 문제는 실제 센서 · 물리가 있는 GPU 실행에서야 드러났습니다. 실행 환경까지 포함한 통합 검증을 일정 안에 넣어야 합니다.
+- 라이브러리 충돌(OpenCV 5와 `cv_bridge`)과 시간 문제는 실제 센서 · 물리가 도는 시뮬레이션을 끝까지 실행해 봐야 드러났습니다. 실행 환경까지 포함한 통합 시험을 일정 안에 넣어야 합니다.
 
 ## 👥 팀 · 역할
 
@@ -311,8 +309,6 @@ RTX 3080에서 Isaac Sim + ROS 2를 실제로 돌리며 막힌 곳 7가지를 �
 | 8/20 ~ 8/25 | 단위 개발 · 테스트 | 인터페이스 설계, 구체적 설계 및 기능 추가 · 모델 학습, 로봇 제어, Isaac Sim 환경 구축 |
 | 8/22 ~ 8/27 | 통합 시스템 구축 · 테스트 | 전체 시스템 통합 및 자동화 · PC 간 통신, 설계 호환 확인 |
 | 8/24 · 8/27 · 8/28 | 시연 · 발표 | 1차 개발, 프로젝트 시연, 팀별 최종 프로젝트 발표(이틀간 최종 시연과 발표) |
-| 8/30 | 제출 구성 정리 | 에셋 상대경로화 · 제출 점검 도구(`verify_submission.py`), 병합본을 `main`으로 정리 |
-| 10/9 ~ 10/10 | GPU 최종 검증 | RTX 3080에서 전체 시스템을 실행해 막힌 지점 7가지를 수정하고 6 Cycle 연속 완주 확인, 공장 배경 월드 적용 |
 
 - **협업 도구:** Git/GitHub · Slack · Notion(일일 노트) · Google Drive
 - **문서:** 설치 · 실행 안내 [`README_INSTALL.md`](README_INSTALL.md), 트러블슈팅 [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)
@@ -326,7 +322,6 @@ RTX 3080에서 Isaac Sim + ROS 2를 실제로 돌리며 막힌 곳 7가지를 �
 | OS · 미들웨어 | Ubuntu 24.04 · ROS 2 Jazzy · Fast DDS(`rmw_fastrtps_cpp`) |
 | 시뮬레이터 | NVIDIA Isaac Sim 5.1.0 (USD · Articulation · Lula IK · ROS 2 Bridge) |
 | 언어 · 라이브러리 | Python 3 · `rclpy` · `cv_bridge` · `message_filters` · OpenCV · NumPy · Ultralytics YOLO11 |
-| 검증 PC | RTX 3080 10 GB · 드라이버 580 · ultralytics 8.4 · torch 2.13+cu130 · opencv-python 5.0 · numpy 1.26 |
 | 협업 | Git/GitHub · Slack · Notion · Google Drive |
 
 | 구성 요소 | 모델 · 형식 | 역할 · ROS 연결 |
@@ -338,7 +333,7 @@ RTX 3080에서 Isaac Sim + ROS 2를 실제로 돌리며 막힌 곳 7가지를 �
 
 ## 🚀 설치 · 실행
 
-GPU 없이 Ubuntu 24.04 + ROS 2 Jazzy PC에서 **빌드 · 단위 시험**까지 해 볼 수 있습니다. 전체 시스템은 RTX GPU와 Isaac Sim 5.1이 있는 PC 1대에서 터미널 3개로 실행합니다.
+Ubuntu 24.04 + ROS 2 Jazzy PC에서 **빌드 · 단위 시험**까지 해 볼 수 있습니다. 전체 시스템은 Isaac Sim 5.1이 설치된 NVIDIA GPU PC 1대에서 터미널 3개로 실행합니다.
 
 <details>
 <summary>빠른 시작 — 받기 · 빌드 · 시험</summary>

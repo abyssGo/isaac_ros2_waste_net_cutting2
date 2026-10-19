@@ -2,7 +2,7 @@
 
 ## 월드 구성
 
-실행 기본 월드는 `sim/assets/project1/simulation_integration_v4_factory.usda`이고, 장식 없는 공정 월드는 `simulation_integration_v4.usd`입니다. 두 월드 모두 6 Cycle 연속 완주를 확인했습니다([`TROUBLESHOOTING.md`](TROUBLESHOOTING.md)).
+실행 기본 월드는 `sim/assets/project1/simulation_integration_v4_factory.usda`이고, 장식 없는 공정 월드는 `simulation_integration_v4.usd`입니다. 두 월드 모두 전체 공정 연속 완주를 확인했습니다([`TROUBLESHOOTING.md`](TROUBLESHOOTING.md)).
 
 | 파일 | 설명 |
 |---|---|
@@ -16,7 +16,7 @@
 - 공장 소품(Isaac Sim 5.1 공개 창고 소품 약 410 MB)은 `sim/assets/factory/isaac/`에 포함되어 있어 인터넷 없이 열립니다.
 - 월드를 바꿔 실행하려면 `NETCLEAN_USD=<경로> ./scripts/run_standalone.sh`를 씁니다.
 - 코드가 요구하는 prim(로봇 · 어망 · 카메라 · ROS 그래프 · FixedJoint · TCP 19개)과 로컬 참조 에셋이 모두 있는지 USD 의존성 분석으로 확인했습니다.
-- `Collected_collected_net/net_collected.obj`(약 18 MB)는 v3가 참조하는 어망 payload입니다. USD payload로 열 수 없어 로드 경고가 날 수 있지만, 6 Cycle 완주 구성과 같은 파일이므로 지우지 않습니다.
+- `Collected_collected_net/net_collected.obj`(약 18 MB)는 v3가 참조하는 어망 payload입니다. USD payload로 열 수 없어 로드 경고가 날 수 있지만, 완주를 확인한 구성과 같은 파일이므로 지우지 않습니다.
 - 월드가 참조하지 않는 고해상도 재질 텍스처(단일 파일 최대 약 87 MB)는 넣지 않았습니다. 원격 머티리얼은 Isaac Sim이 첫 실행 때 인터넷으로 받습니다.
 
 ## Git 관리 정책

@@ -8,7 +8,7 @@ Isaac Sim 5.1 + ROS 2 Jazzy 기반 NetClean 공정(어망 이송 → 절단 → 
 | 항목 | 값 |
 |---|---|
 | OS · ROS | Ubuntu 24.04 · ROS 2 Jazzy · `rmw_fastrtps_cpp` |
-| 시뮬레이터 | NVIDIA Isaac Sim 5.1.0 (RTX GPU 필요) |
+| 시뮬레이터 | NVIDIA Isaac Sim 5.1.0 (NVIDIA GPU 필요) |
 | Python 패키지 | `ultralytics`(YOLO11), `numpy<2`, `opencv-python`, `message_filters`, `cv_bridge` |
 | 모델 | `models/netclean_yolo11n/weights/best.pt` (저장소에 포함) |
 
@@ -68,7 +68,7 @@ source /opt/ros/jazzy/setup.bash && source ros2_ws/install/setup.bash
 NETCLEAN_USD=$PWD/sim/assets/project1/simulation_integration_v4.usd ./scripts/run_standalone.sh
 ```
 
-두 월드 모두 6 Cycle 연속 완주를 확인했습니다([`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)).
+두 월드 모두 전체 공정 연속 완주를 확인했습니다([`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)).
 
 ## 5. 연동 확인
 
