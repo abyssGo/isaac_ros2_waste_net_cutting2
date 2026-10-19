@@ -38,6 +38,12 @@ https://github.com/user-attachments/assets/64e6e503-a420-4058-8fd8-c774d934e16e
 
 어망이 Station 1에 도착해 절단되고, Station 2에서 흡착 제거 · 재검사를 거쳐 Exit로 나가는 1 Cycle입니다.
 
+### 🏭 공장 배경 월드 — 6 Cycle 연속 가동
+
+[![공장 배경에서 6 Cycle 연속 가동](docs/images/factory_6cycles_poster.jpg)](docs/videos/factory_6cycles_8x.mp4)
+
+공장 배경 월드에서 어망 이송 → 절단 → 흡착 제거 → 재검사 → Exit를 6 Cycle 연속으로 돌린 Isaac Sim 화면입니다(8배속, 1분 47초). 이미지를 누르면 재생됩니다.
+
 ### 🎞️ 실제 실행 장면 (RTX 3080 · 3번째 Cycle)
 
 | Station 1 — Robot 1 절단 | Station 2 — Robot 2 흡착 제거 · 재검사 |
@@ -45,7 +51,6 @@ https://github.com/user-attachments/assets/64e6e503-a420-4058-8fd8-c774d934e16e
 | <img src="docs/images/station1_cut_cycle3.gif" width="360" alt="Station 1 절단"> | <img src="docs/images/station2_remove_cycle3.gif" width="360" alt="Station 2 흡착 제거"> |
 
 - 1 Cycle 전체(약 130 s)를 4배속으로 본 영상: [`docs/videos/isaac_full_cycle_4x.mp4`](docs/videos/isaac_full_cycle_4x.mp4)
-- 공장 배경 월드 6 Cycle(8배속): [`docs/videos/factory_6cycles_8x.mp4`](docs/videos/factory_6cycles_8x.mp4)
 
 <p align="center">
   <img src="docs/images/process_sheet.png" width="900" alt="탐지 → 절단 → 흡착 제거 → 재검사 4단계"><br>
