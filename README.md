@@ -53,11 +53,6 @@ https://github.com/user-attachments/assets/64e6e503-a420-4058-8fd8-c774d934e16e
 | <img src="docs/images/station1_cut.gif" width="360" alt="Station 1 절단"> | <img src="docs/images/station2_remove.gif" width="360" alt="Station 2 흡착 제거"> |
 
 <p align="center">
-  <img src="docs/images/process_4x.gif" width="480" alt="전체 공정 한 바퀴 4배속"><br>
-  <sub>전체 공정 한 바퀴(약 130 s)를 4배속으로 본 화면</sub>
-</p>
-
-<p align="center">
   <img src="docs/images/process_sheet.png" width="900" alt="탐지 → 절단 → 흡착 제거 → 재검사 4단계"><br>
   <sub>탐지(YOLO + 절단점 P1 · P2) → Robot 1 절단 → Robot 2 흡착 제거 → 재검사(빈 어망) — 실제 실행 화면</sub>
 </p>
