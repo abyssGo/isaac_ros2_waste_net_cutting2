@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import traceback
 from typing import Dict, List, Sequence, Tuple
 
 import cv2
@@ -40,6 +41,12 @@ from ultralytics import YOLO
 from nc_interfaces.action import ExecuteRemove
 from nc_interfaces.msg import RemoveTarget
 
+from .image_msg_utils import bgr8_to_imgmsg
+from .sync_utils import (
+    StampRewindGuard,
+    clear_synchronizer_queues,
+    stamp_to_ns,
+)
 from .depth_utils import bbox_center_depth_m, point_from_pixel_depth
 from .depth_target_utils_v2 import select_depth_guided_target
 from .yolo_utils import Detection, best_detection_per_class
@@ -69,6 +76,7 @@ class Vision2Node(Node):
         self.last_goal_stamp = None
         self.minimum_frame_stamp_ns = -1
         self.next_detection_not_before_ns = 0
+        self.awaiting_arrival_settle = False
         self.debug_detections: List[dict] = []
         self.debug_phase = "WAITING"
         self.debug_station = "WAITING"
@@ -120,6 +128,10 @@ class Vision2Node(Node):
             self.depth_topic,
             qos_profile=camera_qos,
         )
+        # Isaac Sim reset 으로 시간이 되감기면 이전 Cycle 프레임이 큐에 남아
+        # 새 프레임이 즉시 버려진다. 동기화기보다 먼저 등록해 큐를 비운다.
+        self.stamp_rewind_guard = StampRewindGuard(tolerance_sec=1.0)
+        self.rgb_subscriber.registerCallback(self._on_rgb_stamp)
         self.synchronizer = message_filters.ApproximateTimeSynchronizer(
             [self.rgb_subscriber, self.depth_subscriber],
             queue_size=self.sync_queue_size,
@@ -247,6 +259,8 @@ class Vision2Node(Node):
         self.declare_parameter("depth_guided_minimum_tolerance_m", 0.03)
         self.declare_parameter("depth_guided_patch_radius", 3)
         self.declare_parameter("reinspect_delay_sec", 0.50)
+        # 도착 판정(±2 cm)은 어망이 멈추기 전에 나므로, 정착 후 프레임만 쓴다.
+        self.declare_parameter("arrival_settle_sec", 1.0)
         self.declare_parameter("detection_retry_period_sec", 0.20)
         self.declare_parameter("empty_confirmation_frames", 5)
 
@@ -313,6 +327,7 @@ class Vision2Node(Node):
             value("depth_guided_patch_radius")
         )
         self.reinspect_delay_sec = float(value("reinspect_delay_sec"))
+        self.arrival_settle_sec = float(value("arrival_settle_sec"))
         self.detection_retry_period_sec = float(
             value("detection_retry_period_sec")
         )
@@ -353,6 +368,8 @@ class Vision2Node(Node):
             raise ValueError("depth_guided_patch_radius must be positive")
         if self.reinspect_delay_sec < 0.0:
             raise ValueError("reinspect_delay_sec must not be negative")
+        if self.arrival_settle_sec < 0.0:
+            raise ValueError("arrival_settle_sec must not be negative")
         if self.detection_retry_period_sec <= 0.0:
             raise ValueError("detection_retry_period_sec must be positive")
         if self.empty_confirmation_frames < 1:
@@ -379,8 +396,22 @@ class Vision2Node(Node):
             )
         self.camera_info = message
 
+    def _on_rgb_stamp(self, message: Image) -> None:
+        if not self.stamp_rewind_guard.update(stamp_to_ns(message.header.stamp)):
+            return
+        removed = clear_synchronizer_queues(self.synchronizer)
+        self.get_logger().warning(
+            f"Camera time rewound (simulation reset); cleared {removed} "
+            "stale RGB-D frames from the synchronizer"
+        )
+
     def _on_station_arrived(self, message: Bool) -> None:
         if message.data and not self.station_arrived:
+            removed = clear_synchronizer_queues(self.synchronizer)
+            if removed:
+                self.get_logger().info(
+                    f"Station2 arrival: cleared {removed} queued RGB-D frames"
+                )
             self.station_arrived = True
             self.cycle_finished = False
             self.processing = False
@@ -391,8 +422,13 @@ class Vision2Node(Node):
             self.pending_targets = None
             self.pending_stamp = None
             self.last_goal_stamp = None
+            # 어망이 멈춘 뒤 렌더된 프레임만 받는다. 이동 중 프레임을 쓰면
+            # 목표가 이송 방향 반대쪽으로 수 cm 밀려 흡착 거리검사에서 거부된다.
+            # 카메라 타임스탬프는 리셋 때 0 으로 돌아가지만 /clock 은 계속 증가하므로
+            # 하한은 노드 시계가 아니라 도착 후 첫 프레임 시각 기준으로 정한다.
             self.minimum_frame_stamp_ns = -1
             self.next_detection_not_before_ns = 0
+            self.awaiting_arrival_settle = True
             self.debug_detections = []
             self.debug_recheck_count = 0
             self._set_debug_state(
@@ -407,6 +443,7 @@ class Vision2Node(Node):
             )
         elif not message.data:
             self.station_arrived = False
+            self.awaiting_arrival_settle = False
             self.cycle_finished = False
             self.frame_locked = False
             self.empty_frame_count = 0
@@ -443,6 +480,12 @@ class Vision2Node(Node):
             return
 
         frame_stamp_ns = self._stamp_to_ns(rgb_message.header.stamp)
+        if self.awaiting_arrival_settle:
+            self.awaiting_arrival_settle = False
+            self.minimum_frame_stamp_ns = frame_stamp_ns + int(
+                self.arrival_settle_sec * 1_000_000_000
+            )
+            return
         if frame_stamp_ns <= self.minimum_frame_stamp_ns:
             return
         if self.get_clock().now().nanoseconds < self.next_detection_not_before_ns:
@@ -461,9 +504,15 @@ class Vision2Node(Node):
         except Exception as error:  # noqa: BLE001
             self._set_debug_state(
                 phase="ERROR",
-                message=f"ERROR - unexpected Vision2 failure: {error}",
+                message=(
+                    f"ERROR - unexpected Vision2 failure: "
+                    f"{type(error).__name__}: {error}"
+                ),
             )
-            self.get_logger().error(f"Unexpected Vision2 error: {error}")
+            self.get_logger().error(
+                f"Unexpected Vision2 error: {type(error).__name__}: {error}\n"
+                + traceback.format_exc()
+            )
             self._schedule_detection_retry()
         finally:
             self.processing = False
@@ -1263,9 +1312,12 @@ class Vision2Node(Node):
         )
 
     def _publish_debug(self, image: np.ndarray, source_message: Image) -> None:
-        debug_message = self.bridge.cv2_to_imgmsg(image, encoding="bgr8")
-        debug_message.header = source_message.header
-        debug_message.header.frame_id = self.camera_frame
+        # cv_bridge-free conversion: see image_msg_utils for the OpenCV 5 issue.
+        debug_message = bgr8_to_imgmsg(
+            image,
+            header=source_message.header,
+            frame_id=self.camera_frame,
+        )
         self.debug_publisher.publish(debug_message)
 
     def _publish_popup_source(
@@ -1274,9 +1326,11 @@ class Vision2Node(Node):
         source_message: Image,
     ) -> None:
         """Publish the exact clean frame used to compute popup detections."""
-        popup_message = self.bridge.cv2_to_imgmsg(image, encoding="bgr8")
-        popup_message.header = source_message.header
-        popup_message.header.frame_id = self.camera_frame
+        popup_message = bgr8_to_imgmsg(
+            image,
+            header=source_message.header,
+            frame_id=self.camera_frame,
+        )
         self.last_popup_image_message = popup_message
         self.popup_image_publisher.publish(popup_message)
 

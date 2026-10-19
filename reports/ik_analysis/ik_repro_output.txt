@@ -1,0 +1,29 @@
+[1] 실패 재현 (warm=APPROACH, seed 고정): success=False pos_err=8.88mm ori_err=0.0228
+[2] 같은 warm start 로 목표 Y 를 옮겨 가며 (X, Z 고정)
+    y=-2.400 success=True pos_err=  0.00mm ori_err=0.0014
+    y=-2.405 success=True pos_err=  0.00mm ori_err=0.0010
+    y=-2.410 success=True pos_err=  0.00mm ori_err=0.0013
+    y=-2.415 success=True pos_err=  0.00mm ori_err=0.0011
+    y=-2.420 success=True pos_err=  0.00mm ori_err=0.0011
+    y=-2.425 success=True pos_err=  0.00mm ori_err=0.0010
+    y=-2.430 success=False pos_err=  1.54mm ori_err=0.0127
+    y=-2.435 success=False pos_err=  3.85mm ori_err=0.0172
+    y=-2.440 success=False pos_err=  6.32mm ori_err=0.0203
+    y=-2.445 success=False pos_err=  8.88mm ori_err=0.0228
+    y=-2.450 success=False pos_err= 11.49mm ori_err=0.0248
+    y=-2.455 success=False pos_err= 14.16mm ori_err=0.0266
+    y=-2.460 success=False pos_err= 16.86mm ori_err=0.0282
+    y=-2.465 success=False pos_err= 19.60mm ori_err=0.0297
+    y=-2.470 success=False pos_err= 22.37mm ori_err=0.0310
+    y=-2.475 success=False pos_err= 25.18mm ori_err=0.0323
+    y=-2.480 success=False pos_err= 28.00mm ori_err=0.0335
+[3] 해 존재 여부: sampling_seed 를 바꿔 다시 풀기 (warm 없음)
+    40개 seed 중 성공 0개
+[4] warm=APPROACH, max_num_descents 500: success=False pos_err=8.88mm
+[6] 경계 부근 해의 관절값과 한계
+    limits lower [-6.283, -6.283, -2.618, -6.283, -6.283, -6.283]
+    limits upper [6.283, 6.283, 2.618, 6.283, 6.283, 6.283]
+    y=-2.400 ok=True q=[-2.413, 0.714, 0.368, -1.064, 0.867, -2.297] min_margin=j3:2.250rad wrist=[-0.439, -2.4, 1.118]
+    y=-2.415 ok=True q=[-2.394, 0.786, 0.232, -1.035, 0.912, -2.358] min_margin=j3:2.386rad wrist=[-0.439, -2.415, 1.118]
+    y=-2.425 ok=True q=[-2.383, 0.9, 0.004, -0.975, 0.981, -2.473] min_margin=j3:2.614rad wrist=[-0.439, -2.425, 1.118]
+    y=-2.445 ok=False q=[0.8, -0.914, -0.0, -1.017, -0.981, 0.701] min_margin=j3:2.618rad wrist=[-0.434, -2.438, 1.11]

@@ -270,13 +270,20 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--headless",
         action="store_true",
-        help="run without GUI; default is GUI mode",
+        help="run without GUI; cameras are still rendered and published",
+    )
+    parser.add_argument(
+        "--no-render",
+        action="store_true",
+        help="skip rendering (physics only): camera topics are NOT published",
     )
     return parser.parse_args()
 
 
 ARGS = _parse_args()
 
+# 카메라 ROS 그래프는 렌더링이 있어야 발행된다. 헤드리스에서도 렌더링한다(CI 회귀 시험용).
+RENDER_FRAMES = not ARGS.no_render
 
 # SimulationApp은 다른 Isaac Sim/Omniverse 모듈보다 반드시 먼저 생성한다.
 from isaacsim import SimulationApp
@@ -930,12 +937,19 @@ class RuntimeSuctionController:
             (
                 surface_distance,
                 closest_surface_point,
-                _,
-                _,
+                bounds_min,
+                bounds_max,
             ) = _distance_to_prim_world_bounds(
                 self._stage,
                 object_body_path,
                 tcp_pos,
+            )
+            # 판정 근거를 sim.log 에 남긴다(흡착 여유 분석용).
+            print(
+                f"[robot2 suction] check class={class_name} distance={surface_distance:.4f} "
+                f"tcp={tcp_pos.round(4).tolist()} aabb_min={bounds_min.round(4).tolist()} "
+                f"aabb_max={bounds_max.round(4).tolist()}",
+                flush=True,
             )
 
             if surface_distance > SUCTION_CONTACT_TOLERANCE_M:
@@ -1481,7 +1495,7 @@ def _publish_net_pose(ros, controller):
 def _move_net_blocking(world, controller, target_xyz, timeout_sec=30.0):
     controller.set_target(target_xyz)
     for _ in range(max(1, int(math.ceil(timeout_sec / PHYSICS_DT)))):
-        controller.update(PHYSICS_DT); world.step(render=not ARGS.headless)
+        controller.update(PHYSICS_DT); world.step(render=RENDER_FRAMES)
         if controller.at_target(): controller.update(0.0); return
     raise RuntimeError(f"Net transport timeout to {list(target_xyz)}")
 
@@ -1491,7 +1505,7 @@ def _perform_cycle_reset(world, ros, net_controller, robot1_controller, robot2_c
     ros.clear_command_queues(); robot1_controller.reset(); robot2_controller.reset(); suction_controller.reset(); joint_controller.reset()
     world.reset(); _apply_robot_drive_settings(robot1, "robot1"); _apply_robot_drive_settings(robot2, "robot2")
     net_controller.reset_to_spawn(); tracked_objects.restore(); robot1_controller.reset(); robot2_controller.reset(); suction_controller.reset(); joint_controller.reset()
-    for _ in range(WARMUP_STEPS): net_controller.update(0.0); world.step(render=not ARGS.headless)
+    for _ in range(WARMUP_STEPS): net_controller.update(0.0); world.step(render=RENDER_FRAMES)
     _move_net_blocking(world, net_controller, NET_WAIT_XYZ)
     if not suction_controller.is_open(): raise RuntimeError("Runtime suction did not open during reset")
     if not joint_controller.all_enabled(): raise RuntimeError("Object FixedJoint reset failed")
@@ -1522,7 +1536,7 @@ def main():
         carriage_wrappers = [world.scene.add(SingleXFormPrim(prim_path=p, name=f"net_carriage_{i}")) for i,p in enumerate(CARRIAGE_PRIM_PATHS)]
         object_wrappers = {name: world.scene.add(SingleRigidPrim(prim_path=path, name=f"trash_{i}_{name}")) for i,(name,path) in enumerate(object_body_paths.items())}
         world.reset(); _apply_robot_drive_settings(robot1, "robot1"); _apply_robot_drive_settings(robot2, "robot2")
-        for _ in range(WARMUP_STEPS): world.step(render=not ARGS.headless)
+        for _ in range(WARMUP_STEPS): world.step(render=RENDER_FRAMES)
         tracked_objects = TrackedRigidObjects(object_wrappers)
         net_controller = NetTransportController(logical_net_root, physical_net, carriage_wrappers, NET_SPEED_MPS); net_controller.reset_to_spawn()
         rclpy.init(args=None); ros = SimRosInterface()
@@ -1537,12 +1551,12 @@ def main():
         )
         joint_controller = FixedJointReleaseController(stage, JOINT_PATH_BY_CLASS, suction_controller, ros.robot2_joint_release_done_pub)
         suction_controller.reset(); joint_controller.reset(); tracked_objects.restore()
-        for _ in range(WARMUP_STEPS): net_controller.update(0.0); world.step(render=not ARGS.headless)
+        for _ in range(WARMUP_STEPS): net_controller.update(0.0); world.step(render=RENDER_FRAMES)
         _move_net_blocking(world, net_controller, NET_WAIT_XYZ)
         ready_period = 1.0 / READY_PUBLISH_HZ; pose_period = 1.0 / NET_CURRENT_POSE_HZ; last_ready_publish = -math.inf; last_pose_publish = -math.inf; simulated_time = 0.0; sim_ready = True
         print("[NetClean] standalone READY at WAIT; waiting for ROS commands", flush=True)
         while simulation_app.is_running() and not shutting_down:
-            world.step(render=not ARGS.headless); simulated_time += PHYSICS_DT; rclpy.spin_once(ros, timeout_sec=0.0)
+            world.step(render=RENDER_FRAMES); simulated_time += PHYSICS_DT; rclpy.spin_once(ros, timeout_sec=0.0)
             if ros.reset_requests:
                 sim_ready = False; ros._publish_bool_once(ros.sim_ready_pub, False)
                 try:

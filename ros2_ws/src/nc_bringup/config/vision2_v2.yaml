@@ -38,6 +38,9 @@ vision2_node:
     roi_height: 720
 
     # Existing bbox-center sampling remains active for can and buoy.
+    # Camera optical +Z 방향 미세 보정 [m]. 0.0 = 보정 없음 (코드 기본값과 동일, 명시용)
+    grasp_surface_offset_m: 0.0
+
     suction_center_ratio: 0.25
     minimum_valid_depth_pixels: 20
     depth_scale: 1.0
@@ -56,5 +59,6 @@ vision2_node:
 
     # Reinspect only newer frames after a successful Robot2 Action result.
     reinspect_delay_sec: 0.50
+    arrival_settle_sec: 1.0
     detection_retry_period_sec: 0.20
     empty_confirmation_frames: 5

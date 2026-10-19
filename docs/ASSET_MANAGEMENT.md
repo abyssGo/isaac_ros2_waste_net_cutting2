@@ -1,5 +1,33 @@
 # 시뮬레이션 에셋 및 제출 관리
 
+## 최종 월드 구성 (2026-10 GPU 검증 반영)
+
+실행 기본 월드는 `sim/assets/project1/simulation_integration_v4_factory.usda`이고, 장식 없는 원본 공정 월드는 `simulation_integration_v4.usd`입니다. 두 월드 모두 RTX 3080 + Isaac Sim 5.1에서 6 Cycle 연속 완주를 확인했습니다([`reports/TROUBLESHOOTING.md`](../reports/TROUBLESHOOTING.md)).
+
+| 파일 | 설명 |
+|---|---|
+| `simulation_integration_v4.usd` | 공정 월드. 같은 폴더의 `simulation_integration_v3.usd`를 sublayer로 얹은 구조 |
+| `simulation_integration_v3.usd` | v4의 바탕이 되는 월드. 아래 "v3 · 어망 OBJ" 참고 |
+| `simulation_integration_v4_factory.usda` | v4 위에 공장 배경 레이어 3개(`sim/assets/factory/*.usda`)를 얹은 월드(실행 기본) |
+| `sim/assets/factory/` | 공장 장식 레이어 · 소품 · 표지판 텍스처 · 재생성 도구. 모두 시각 전용(충돌 · 강체 · 조인트 끔). 구성은 [`sim/assets/factory/README.md`](../sim/assets/factory/README.md) |
+
+- 공장 소품(Isaac Sim 5.1 공개 창고 소품 약 410 MB)은 `sim/assets/factory/isaac/`에 포함되어 있어 인터넷 없이 열립니다.
+- 월드를 바꿔 실행하려면 `NETCLEAN_USD=<경로> ./scripts/run_standalone.sh`를 씁니다.
+- 코드가 요구하는 prim(로봇 · 어망 · 카메라 · ROS 그래프 · FixedJoint · TCP 19개)과 로컬 참조 에셋이 모두 있음을 USD 의존성 분석으로 확인했습니다.
+
+### v3 · 어망 OBJ
+
+v4가 얹히는 `simulation_integration_v3.usd`는 원본(Notion `project1.zip`) 파일입니다. 아래 "초기 정리 기록"에서 정리했던 v3(OBJ payload 제거본)와 다르며, 원본 v3는 어망의 중복 payload로 `Collected_collected_net/net_collected.obj`(약 18 MB)를 참조합니다. v4 검증은 이 구성으로 했기 때문에 파일을 함께 두었습니다. 이 OBJ는 USD payload로 열 수 없어 로드 경고를 낼 수 있습니다. 정리했던 v3는 Git 이력에 남아 있습니다.
+
+### 포함하지 않은 파일
+
+원본 압축본에는 구버전 월드(`v1` · `v2`), 백업 USD, 중복 로봇 디렉터리와, 월드가 참조하지 않거나 NVIDIA 원격 에셋으로 대체되는 고해상도 재질 텍스처(단일 파일 최대 약 87 MB)가 있습니다. 이들은 저장소에 넣지 않았습니다. 원격 머티리얼은 Isaac Sim이 첫 실행 때 인터넷으로 받습니다.
+
+---
+
+## 초기 정리 기록 (v3 기준)
+
+
 ## 기준 압축본 점검 결과
 
 원본 `isaac_simulation_intergration (2).zip`은 약 666MB이며, 압축 해제 시

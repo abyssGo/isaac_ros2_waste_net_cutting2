@@ -19,5 +19,6 @@ if [[ ! -x "${ISAAC_SIM_ROOT}/python.sh" ]]; then
 fi
 
 exec "${ISAAC_SIM_ROOT}/python.sh" \
-  "${PROJECT_ROOT}/sim/standalone/netclean_standalone.py" \
+  "${PROJECT_ROOT}/sim/standalone/netclean_standalone_v2_home_joint_fix_v2.py" \
+  --usd "${NETCLEAN_USD:-${PROJECT_ROOT}/sim/assets/project1/simulation_integration_v4_factory.usda}" \
   "$@"

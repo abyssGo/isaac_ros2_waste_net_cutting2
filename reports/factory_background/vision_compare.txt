@@ -1,0 +1,30 @@
+== original
+  station1  pixel diff mean  0.00 max   0 | YOLO: buoy 0.975 @(332,308), can 0.972 @(498,389), plastic_bottle 0.959 @(129,438)
+  station2  pixel diff mean  0.00 max   0 | YOLO: buoy 0.977 @(332,308), can 0.972 @(498,389), plastic_bottle 0.959 @(129,438)
+  empty1    pixel diff mean  0.00 max   0 | YOLO: none
+  empty2    pixel diff mean  0.00 max   0 | YOLO: none
+  vision2 target buoy            cam=(+0.0194,-0.0194,0.4769) m  |Δ| vs reference 0.0 mm
+  vision2 target can             cam=(+0.3054,+0.1173,0.5102) m  |Δ| vs reference 0.0 mm
+  vision2 target plastic_bottle  cam=(-0.3293,+0.2017,0.5098) m  |Δ| vs reference 0.0 mm
+== original_plus3frames
+  station1  pixel diff mean  0.90 max  51 | YOLO: buoy 0.975 @(332,308), can 0.972 @(498,389), plastic_bottle 0.959 @(129,438)
+  station2  pixel diff mean  1.52 max  66 | YOLO: buoy 0.977 @(332,308), can 0.972 @(498,389), plastic_bottle 0.959 @(129,438)
+  vision2 target buoy            cam=(+0.0194,-0.0194,0.4769) m  |Δ| vs reference 0.0 mm
+  vision2 target can             cam=(+0.3054,+0.1173,0.5102) m  |Δ| vs reference 0.0 mm
+  vision2 target plastic_bottle  cam=(-0.3293,+0.2017,0.5098) m  |Δ| vs reference 0.0 mm
+== step1_outside_fov
+  station1  pixel diff mean  1.60 max  87 | YOLO: buoy 0.163 @(603,518), buoy 0.975 @(332,308), can 0.972 @(498,389), plastic_bottle 0.959 @(129,438)
+  station2  pixel diff mean  1.65 max  73 | YOLO: buoy 0.977 @(332,308), can 0.971 @(498,389), plastic_bottle 0.959 @(129,438)
+  empty1    pixel diff mean  0.48 max   3 | YOLO: none
+  empty2    pixel diff mean  0.48 max   6 | YOLO: none
+  vision2 target buoy            cam=(+0.0194,-0.0194,0.4769) m  |Δ| vs reference 0.0 mm
+  vision2 target can             cam=(+0.3067,+0.1172,0.5095) m  |Δ| vs reference 1.5 mm
+  vision2 target plastic_bottle  cam=(-0.3293,+0.2017,0.5098) m  |Δ| vs reference 0.0 mm
+== final_backdrop
+  station1  pixel diff mean 14.81 max 218 | YOLO: buoy 0.976 @(332,308), can 0.971 @(498,389), plastic_bottle 0.959 @(129,438)
+  station2  pixel diff mean 15.11 max 218 | YOLO: buoy 0.977 @(332,308), can 0.971 @(498,389), plastic_bottle 0.959 @(129,438)
+  empty1    pixel diff mean 14.89 max 219 | YOLO: none
+  empty2    pixel diff mean 14.36 max 219 | YOLO: none
+  vision2 target buoy            cam=(+0.0194,-0.0194,0.4769) m  |Δ| vs reference 0.0 mm
+  vision2 target can             cam=(+0.3067,+0.1172,0.5095) m  |Δ| vs reference 1.5 mm
+  vision2 target plastic_bottle  cam=(-0.3293,+0.2017,0.5098) m  |Δ| vs reference 0.0 mm
