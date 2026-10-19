@@ -68,7 +68,7 @@ source /opt/ros/jazzy/setup.bash && source ros2_ws/install/setup.bash
 NETCLEAN_USD=$PWD/sim/assets/project1/simulation_integration_v4.usd ./scripts/run_standalone.sh
 ```
 
-두 월드 모두 6 Cycle 연속 완주를 확인했습니다([`reports/TROUBLESHOOTING.md`](reports/TROUBLESHOOTING.md)).
+두 월드 모두 6 Cycle 연속 완주를 확인했습니다([`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)).
 
 ## 5. 연동 확인
 
@@ -104,4 +104,4 @@ ros2 launch nc_vision_debug debug_popups.launch.py
 | `--headless`에서 카메라 토픽이 없음 | `--no-render`를 붙였는지 확인 |
 | Station 1에서 멈춤(`Waiting for all classes`) | Vision 1은 `plastic_bottle` · `can` · `buoy` 3종이 모두 보여야 절단을 시작합니다 |
 | 월드가 안 열림 | 로그에서 못 찾는 파일 확인. NVIDIA 원격 에셋(머티리얼)은 첫 실행 때 인터넷으로 받습니다 |
-| 7가지 트러블슈팅 전체 | [`reports/TROUBLESHOOTING.md`](reports/TROUBLESHOOTING.md) |
+| 7가지 트러블슈팅 전체 | [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) |

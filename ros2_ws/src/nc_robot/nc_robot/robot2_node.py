@@ -181,7 +181,7 @@ CONTACT_HOLD_SEC = 0.25
 # 표면점은 물체 중앙의 깊이라, 페트병은 가장 튀어나온 면(AABB 앞면)이 표면점보다
 # 8.5 mm 앞에 있다. 표면점까지 밀고 들어가면 흡착컵이 병에 먼저 닿고, 강성이 낮은
 # 1축(160)이 밀려 TCP 가 옆으로 4-7 cm 미끄러져 흡착 판정(3 cm)에서 거부됐다
-# (reports/gpu_logs/run15_suction_diag). 흡착 판정은 AABB 거리라 1.2 cm 앞에서도 통과한다.
+# (docs/TROUBLESHOOTING.md #7). 흡착 판정은 AABB 거리라 1.2 cm 앞에서도 통과한다.
 CONTACT_STANDOFF_M = 0.012
 
 MOTION_TIMEOUT_SEC = 70.0

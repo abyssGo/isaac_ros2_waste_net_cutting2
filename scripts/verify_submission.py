@@ -17,15 +17,18 @@ GITHUB_WARNING_FILE_SIZE = 50 * 1024 * 1024
 REQUIRED_FILES = (
     "README.md",
     "sim/assets/project1/simulation_integration_v3.usd",
+    "sim/assets/project1/simulation_integration_v4.usd",
+    "sim/assets/project1/simulation_integration_v4_factory.usda",
     "sim/assets/project1/robot2_sample/m0609_isaac_sim.urdf",
     "sim/assets/project1/robot2_sample/m0609_description.yaml",
     "sim/assets/project1/Collected_collected_net/collected_net.usd",
     "sim/assets/project1/Collected_collected_net/Collected_net/World4.usd",
     "sim/assets/project1/Collected_collected_net/Collected_net/SubUSDs/net_collected.usd",
-    "sim/standalone/netclean_standalone.py",
+    "sim/standalone/netclean_standalone_v2_home_joint_fix_v2.py",
     "scripts/run_standalone.sh",
     "ros2_ws/src/nc_bringup/launch/pc_a.launch.py",
     "ros2_ws/src/nc_bringup/launch/pc_b.launch.py",
+    "ros2_ws/src/nc_bringup/launch/pc_b_v2.launch.py",
     "models/netclean_yolo11n/weights/best.pt",
 )
 

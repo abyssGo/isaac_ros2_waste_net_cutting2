@@ -38,11 +38,13 @@ https://github.com/user-attachments/assets/64e6e503-a420-4058-8fd8-c774d934e16e
 
 어망이 Station 1에 도착해 절단되고, Station 2에서 흡착 제거 · 재검사를 거쳐 Exit로 나가는 1 Cycle입니다.
 
-### 🏭 공장 배경 월드 — 6 Cycle 연속 가동
+### 🏭 공장 배경에서 6 Cycle 연속 실행
 
-[![공장 배경에서 6 Cycle 연속 가동](docs/images/factory_6cycles_poster.jpg)](docs/videos/factory_6cycles_8x.mp4)
+<p align="center">
+  <img src="docs/images/factory_6cycles.gif" width="720" alt="공장 배경에서 6 Cycle 연속 실행">
+</p>
 
-공장 배경 월드에서 어망 이송 → 절단 → 흡착 제거 → 재검사 → Exit를 6 Cycle 연속으로 돌린 Isaac Sim 화면입니다(8배속, 1분 47초). 이미지를 누르면 재생됩니다.
+공장 배경에서 어망 이송 → 절단 → 흡착 제거 → 재검사 → Exit를 6 Cycle 연속으로 실행한 Isaac Sim 화면입니다(8배속, 1분 47초).
 
 ### 🎞️ 실제 실행 장면 (RTX 3080 · 3번째 Cycle)
 
@@ -50,7 +52,10 @@ https://github.com/user-attachments/assets/64e6e503-a420-4058-8fd8-c774d934e16e
 |:---:|:---:|
 | <img src="docs/images/station1_cut_cycle3.gif" width="360" alt="Station 1 절단"> | <img src="docs/images/station2_remove_cycle3.gif" width="360" alt="Station 2 흡착 제거"> |
 
-- 1 Cycle 전체(약 130 s)를 4배속으로 본 영상: [`docs/videos/isaac_full_cycle_4x.mp4`](docs/videos/isaac_full_cycle_4x.mp4)
+<p align="center">
+  <img src="docs/images/full_cycle_4x.gif" width="480" alt="1 Cycle 전체 4배속"><br>
+  <sub>1 Cycle 전체(약 130 s)를 4배속으로 본 화면</sub>
+</p>
 
 <p align="center">
   <img src="docs/images/process_sheet.png" width="900" alt="탐지 → 절단 → 흡착 제거 → 재검사 4단계"><br>
@@ -223,11 +228,11 @@ flowchart TD
 
 ## 🧩 트러블슈팅
 
-RTX 3080에서 Isaac Sim + ROS 2를 실제로 돌리며 막힌 곳 7가지를 원인부터 좁혀 코드로 고쳤습니다. 대표 4건이고 나머지 3건은 접어 두었습니다. 상세 분석 · 재현 코드는 [`reports/TROUBLESHOOTING.md`](reports/TROUBLESHOOTING.md)에 있습니다.
+RTX 3080에서 Isaac Sim + ROS 2를 실제로 돌리며 막힌 곳 7가지를 원인부터 좁혀 코드로 고쳤습니다. 대표 4건이고 나머지 3건은 접어 두었습니다. 상세 분석은 [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)에 있습니다.
 
 | 문제 | 원인 | 어떻게 해결했나 | 결과 |
 |---|---|---|---|
-| 리셋 뒤 Vision 1이 116 ~ 137 s 동안 무응답 | 리셋으로 시뮬 시간이 0으로 되감기는데 RGB-D 동기화 큐에 리셋 전 프레임이 남아, 새 프레임을 "가장 오래된 것"으로 버림 | 도착 시 · 타임스탬프가 되감길 때 큐를 비우는 `sync_utils.py` 추가(실제 동기화기를 재현하는 단위 시험 포함) | **6 Cycle 연속 완주**(수정 전 최대 3) |
+| 리셋 뒤 Vision 1이 116 ~ 137 s 동안 무응답 | 리셋으로 시뮬 시간이 0으로 되감기는데 RGB-D 동기화 큐에 리셋 전 프레임이 남아, 새 프레임을 "가장 오래된 것"으로 버림 | 도착 시 · 타임스탬프가 되감길 때 큐를 비우는 `sync_utils.py` 추가(실제 동기화기를 재현하는 단위 시험 포함) | **6 Cycle 연속 완주** |
 | Robot 2 흡착이 가끔 거부(표면 거리 3.3 ~ 4.7 cm > 허용 3 cm) | Vision 2가 어망이 멈추기 전 프레임을 써서 목표가 0 ~ 5 cm 밀림 | `arrival_settle_sec`: 도착 후 첫 프레임 시각 + 1 s 이후의 프레임만 사용(카메라 시각 기준) | 페트병 검출 위치 **6 Cycle 동일**(129 px), 흡착 거부 **0**, 제거 **18/18** |
 | 페트병 흡착 여유가 3 mm뿐(표면 거리 2.70 cm / 허용 3 cm) | 흡착컵이 튀어나온 면에 먼저 닿아 TCP가 옆으로 4 ~ 7 cm 미끄러짐 | CONTACT를 표면 12 mm 앞에서 정지, 대기를 시뮬 시간 기준으로 | 흡착 거리 **0.37 ~ 0.61 cm**, 공장 배경 월드도 6 Cycle 완주 |
 | Robot 1이 일부 절단점에서 IK 실패 → 재시도 후 skip | 어망 가장자리의 위쪽 절단점이 M0609 도달 범위를 6.5 ~ 11.4 mm 넘음(FK로 재현) | 접촉 전 도달 검사, 범위 밖이면 절단선을 따라 안쪽으로 당기고 안 되면 바로 skip | IK 실패 **0**, 절단점 **36/36** |
@@ -264,17 +269,9 @@ RTX 3080에서 Isaac Sim + ROS 2를 실제로 돌리며 막힌 곳 7가지를 �
 | 시스템 | 카메라 2대 RGB-D 약 46 Hz · 빌드 패키지 6개 · 단위 시험 **18 passed** |
 
 <details>
-<summary>수정 전 · 후 비교 · 공장 배경 월드</summary>
+<summary>공장 배경 월드</summary>
 
-| 항목 | 수정 전(각 수정 직전 실행) | 수정 후(최종) |
-|---|---|---|
-| Station 1 통과 | 원본 코드는 OpenCV 5 충돌로 Vision 1이 멈춤 | 통과 |
-| 연속 Cycle | 동기화 수정 전 최대 3 Cycle | **6 / 6** |
-| 흡착 거부 · 제거 | 도착 프레임 수정 전 1회 · 12/15 | 0회 · 18/18 |
-| 페트병 흡착 표면 거리 | 2.70 cm (허용 3 cm) | 0.37 ~ 0.61 cm |
-| Robot 1 절단점 | 도달 검사 전 IK 실패 → 1회 skip (35/36) | 36/36 (안쪽 당김 7회) |
-
-공장 배경 월드(`simulation_integration_v4_factory.usda`)는 원본 v4 월드 위에 장식 레이어 3개를 얹었습니다. 장식은 모두 시각 전용이고(충돌 · 강체 · 조인트 끔), 카메라에 들어오는 것은 어망 뒤 차폐판 1장뿐입니다. 같은 장면 렌더 비교에서 YOLO 신뢰도 차이 ±0.001, 박스 중심 이동 ≤ 0.2 px, Vision 2 3D 목표 차이는 최대 1.5 mm였습니다. 자세한 내용은 [`reports/factory_background/README.md`](reports/factory_background/README.md)에 있습니다.
+공장 배경 월드(`simulation_integration_v4_factory.usda`)는 원본 v4 월드 위에 장식 레이어 3개를 얹었습니다. 장식은 모두 시각 전용이고(충돌 · 강체 · 조인트 끔), 카메라에 들어오는 것은 어망 뒤 차폐판 1장뿐입니다. 같은 장면 렌더 비교에서 YOLO 신뢰도 차이 ±0.001, 박스 중심 이동 ≤ 0.2 px, Vision 2 3D 목표 차이는 최대 1.5 mm였습니다. 자세한 내용은 [`sim/assets/factory/README.md`](sim/assets/factory/README.md)에 있습니다.
 
 <p align="center">
   <img src="docs/images/factory_isaac_view.png" width="620" alt="공장 배경 월드"><br>
@@ -283,12 +280,11 @@ RTX 3080에서 Isaac Sim + ROS 2를 실제로 돌리며 막힌 곳 7가지를 �
 
 </details>
 
-> 위 수치는 발표(8/28) 이후 2026-10-09 ~ 10-10에 RTX 3080 PC에서 최종 설정으로 다시 돌려 얻은 값입니다. 원본 로그는 `reports/gpu_logs/`에 있습니다.
+> 위 수치는 RTX 3080 PC에서 Isaac Sim 5.1 · 최종 설정으로 측정한 값입니다.
 
 ## 🌱 배운 점
 
 - 시뮬레이션에는 시계가 셋(`/clock`, 카메라 프레임 시각, 벽시계)이고, 리셋하면 서로 어긋납니다. 대기 · 동기화 · 판정이 어느 시계를 쓰는지 정해 두지 않으면 증상이 사이클마다 달라져 원인을 찾기 어려웠습니다.
-- 처음에 "Vision 2 좌표가 6 ~ 16 cm 틀렸다"고 진단했지만, 비교 기준으로 쓴 점이 물체 중심이 아니라 AABB 모서리였습니다. 측정값을 보기 전에 **비교 기준부터 검증**해야 했고, 이 진단은 철회했습니다.
 - "IK가 가끔 실패한다"는 증상을 FK로 재현해 보니 솔버 문제가 아니라 기구학적으로 도달할 수 없는 점이었습니다. 로그와 재현 코드로 원인을 확정한 뒤 고치는 편이 빨랐습니다.
 - 라이브러리 충돌(OpenCV 5와 `cv_bridge`)과 시간 문제는 실제 센서 · 물리가 있는 GPU 실행에서야 드러났습니다. 실행 환경까지 포함한 통합 검증을 일정 안에 넣어야 합니다.
 
@@ -319,7 +315,7 @@ RTX 3080에서 Isaac Sim + ROS 2를 실제로 돌리며 막힌 곳 7가지를 �
 | 10/9 ~ 10/10 | GPU 최종 검증 | RTX 3080에서 전체 시스템을 실행해 막힌 지점 7가지를 수정하고 6 Cycle 연속 완주 확인, 공장 배경 월드 적용 |
 
 - **협업 도구:** Git/GitHub · Slack · Notion(일일 노트) · Google Drive
-- **문서:** 설치 · 실행 안내 [`README_INSTALL.md`](README_INSTALL.md), 트러블슈팅 · 검증 기록 [`reports/`](reports/)
+- **문서:** 설치 · 실행 안내 [`README_INSTALL.md`](README_INSTALL.md), 트러블슈팅 [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)
 
 </details>
 
@@ -379,9 +375,7 @@ python3 -m pytest ros2_ws/src/nc_vision/test/test_vision_geometry.py ros2_ws/src
 | 문서 | 내용 |
 |---|---|
 | [`README_INSTALL.md`](README_INSTALL.md) | 설치 · 빌드 · 시험 · 전체 실행 순서 · 월드 선택 · 연동 확인 · 문제 해결 |
-| [`reports/TROUBLESHOOTING.md`](reports/TROUBLESHOOTING.md) | GPU 실검증 트러블슈팅 #2 ~ #8 · 수정 전후 · 재현 방법 |
-| [`reports/ik_analysis/`](reports/ik_analysis/) · [`reports/vision2_analysis/`](reports/vision2_analysis/) | Robot 1 IK 도달 분석 · Vision 2 좌표 분석 |
-| [`reports/factory_background/`](reports/factory_background/README.md) | 공장 배경 월드 적용과 비전 영향 검증 |
+| [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) | 트러블슈팅 7가지 — 증상 · 원인 · 해결 · 결과와 상세 설명 |
 | [`sim/assets/factory/README.md`](sim/assets/factory/README.md) | 공장 배경 에셋 레이어 구성 |
 | [`docs/ASSET_MANAGEMENT.md`](docs/ASSET_MANAGEMENT.md) | 최종 월드(v4 · 공장 배경) 구성 · 에셋 포함 범위 · Git 관리 정책 |
 | [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) | 외부 에셋 출처 · 라이선스 |
@@ -404,10 +398,8 @@ isaac_ros2_waste_net_cutting2/
 │   ├── assets/project1/          메인 USD(v4 · v4_factory) · M0609 URDF · 참조 에셋
 │   ├── assets/factory/           공장 배경 레이어 · 소품 · 텍스처
 │   ├── cobot3_ws/                Robot 1 상대 참조 USD
-│   ├── config/                   sim_config.yaml
-│   └── standalone/               netclean_standalone_v2_home_joint_fix_v2.py (실행 최종본) · 개발 이력 버전
-├── reports/                      트러블슈팅 · IK · Vision 분석 · 공장 배경 · GPU 로그
-├── docs/                         에셋 관리 · README 이미지 · 영상
+│   └── standalone/               netclean_standalone_v2_home_joint_fix_v2.py (실행 최종본)
+├── docs/                         트러블슈팅 · 에셋 관리 · README 이미지
 ├── README_INSTALL.md
 └── LICENSES/ · THIRD_PARTY_NOTICES.md
 ```

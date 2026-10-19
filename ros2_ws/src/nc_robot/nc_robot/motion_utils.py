@@ -5,12 +5,12 @@ sleep_sim_time
     holds used ``time.sleep`` (wall clock): when Isaac Sim runs slower than real
     time (heavier scene, slower PC) less simulated time passed during a hold and
     Robot 2's suction check fired while the bottle was still moving
-    (reports/factory_background/README.md section 3).
+    (docs/TROUBLESHOOTING.md #7).
 
 pull_into_reach
     M0609 reach check for Robot 1's horizontal cutting pose. Cut points at the
     top corners of the net can lie 6.5-11.4 mm outside the arm's reach
-    (reports/ik_analysis/). The point is moved along its cut line toward the
+    (docs/TROUBLESHOOTING.md #5). The point is moved along its cut line toward the
     other cut point until it is reachable, or reported unreachable so the node
     can skip it at once instead of failing IK twice (~20 s).
 """

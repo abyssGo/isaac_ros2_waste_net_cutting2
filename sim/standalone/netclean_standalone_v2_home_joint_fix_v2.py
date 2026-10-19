@@ -16,11 +16,11 @@
 ---------
 Isaac Sim 설치 폴더에서:
 
-    ./python.sh /절대/경로/netclean_standalone.py
+    ./python.sh /절대/경로/netclean_standalone_v2_home_joint_fix_v2.py
 
 또는 USD 경로만 명령행에서 덮어쓰기:
 
-    ./python.sh /절대/경로/netclean_standalone.py --usd /절대/경로/netclean_world.usd
+    ./python.sh /절대/경로/netclean_standalone_v2_home_joint_fix_v2.py --usd /절대/경로/netclean_world.usd
 
 중요
 ----

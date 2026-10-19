@@ -7,7 +7,7 @@ MODEL = ReachModel(shoulder=(0.0, -2.0, 0.6345), arm_length=0.779, wrist_from_tc
 
 
 def test_reach_margin_matches_logged_ik_results():
-    # reports/gpu_logs/robot1_contact_reach.csv: IK failed at y=-2.437 (margin -8.8 mm),
+    # GPU 실행 로그: IK failed at y=-2.437 (margin -8.8 mm),
     # succeeded at y=-2.427 (P1 of the same bottle, next cycle).
     failed = MODEL.margin((-0.690, -2.437, 1.112))
     succeeded = MODEL.margin((-0.690, -2.427, 1.112))

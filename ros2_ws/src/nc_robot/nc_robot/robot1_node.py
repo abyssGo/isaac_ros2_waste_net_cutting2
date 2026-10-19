@@ -161,7 +161,7 @@ RETREAT_DISTANCE_M = 0.15
 CONTACT_HOLD_SEC = 0.50          # 시뮬 시간 기준 대기(sleep_sim_time)
 MOTION_TIMEOUT_SEC = 70.0
 
-# M0609 도달 범위 사전 검사 (reports/ik_analysis/).
+# M0609 도달 범위 사전 검사 (docs/TROUBLESHOOTING.md #5).
 # 수평 절단 자세에서 손목 중심 = TCP + (0.251, 0, 0.0056) m, 어깨 = Robot 1 베이스(y = -2.0)
 # 위 0.6345 m, 어깨~손목 최대 0.779 m(0.411 + 0.368). 로그 86건에서 IK 실패 10건은 모두
 # 여유 -6.5 mm 이하, 성공은 -1.0 mm 이상이었다. 여유가 REACH_MIN_MARGIN_M 보다 작은
