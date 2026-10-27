@@ -73,7 +73,7 @@ ROBOT1_REACH_MODEL = ReachModel(shoulder=(0.0, -2.0, 0.6345), arm_length=0.779,
 
 ---
 
-## 3. 작업 순서 · 흡착 · 실패 복구
+## 3. 작업 순서 절단 · 흡착 · 실패 복구
 
 - **Robot 1 절단**
   - 객체마다 절단점 P1 · P2를 `APPROACH → CONTACT → HOLD → RETREAT`로 처리하고 Home으로 돌아갑니다.
