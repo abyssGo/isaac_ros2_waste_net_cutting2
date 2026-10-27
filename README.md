@@ -46,16 +46,14 @@ https://github.com/user-attachments/assets/64e6e503-a420-4058-8fd8-c774d934e16e
 
 공장 배경 월드에서 어망 이송 → 절단 → 흡착 제거 → 재검사 → Exit로 이어지는 전체 공정이 반복되는 Isaac Sim 화면입니다(8배속, 1분 47초).
 
-### 🎞️ 단계별 실행 장면
-
-| Station 1 — Robot 1 절단 | Station 2 — Robot 2 흡착 제거 · 재검사 |
-|:---:|:---:|
-| <img src="docs/images/station1_cut.gif" width="360" alt="Station 1 절단"> | <img src="docs/images/station2_remove.gif" width="360" alt="Station 2 흡착 제거"> |
+### 🧭 4단계 한 장 요약
 
 <p align="center">
   <img src="docs/images/process_sheet.png" width="900" alt="탐지 → 절단 → 흡착 제거 → 재검사 4단계"><br>
   <sub>탐지(YOLO + 절단점 P1 · P2) → Robot 1 절단 → Robot 2 흡착 제거 → 재검사(빈 어망) — 실제 실행 화면</sub>
 </p>
+
+Station별 실행 장면(GIF)은 아래 [✨ 핵심 기능](#-핵심-기능)의 Robot 1 · Robot 2 항목에 있습니다.
 
 ## 💡 한눈에
 
@@ -92,9 +90,19 @@ YOLO11n으로 `plastic_bottle` · `can` · `buoy`를 찾고, RGB · Depth를 동
 
 객체마다 절단점 P1 · P2를 `APPROACH → CONTACT → HOLD → RETREAT`로 처리하고 HOME으로 돌아옵니다. 접촉 전에 **M0609 도달 범위를 먼저 검사**해, 범위 밖이면 절단선을 따라 안쪽으로 당기고 그래도 닿지 않으면 시도 없이 건너뜁니다(IK 실패로 재시도하던 약 20 s를 아낍니다).
 
+<p align="center">
+  <img src="docs/images/station1_cut.gif" width="520" alt="Station 1 절단"><br>
+  <sub>Station 1 — Robot 1 절단</sub>
+</p>
+
 ### 🧲 Robot 2 — 흡착 제거
 
 `PREGRASP → CONTACT → SUCTION ON → JOINT RELEASE → RETREAT → SUCTION OFF → HOME`. **흡착 성공 응답을 확인한 뒤에만** 어망과 물체를 잇는 Fixed Joint를 해제합니다. CONTACT는 물체 표면에서 12 mm 앞에서 멈춰, 튀어나온 부분에 흡착컵이 먼저 닿아 미끄러지는 문제를 피합니다.
+
+<p align="center">
+  <img src="docs/images/station2_remove.gif" width="520" alt="Station 2 흡착 제거"><br>
+  <sub>Station 2 — Robot 2 흡착 제거 · 재검사</sub>
+</p>
 
 ### 🔁 재검사와 Closed-loop 공정
 
@@ -128,7 +136,7 @@ Net 도착은 `/net/current_pose`가 목표 ±2 cm 안에 들어왔을 때만 �
 
 ### 아키텍처
 
-시스템은 `Simulation` · `Decision & Control` · `Perception` 세 계층이고, 두 PC 가 DDS(Fast DDS)로 연결된다. 시뮬레이션 실행 계층과 판단 계층을 나눠 책임을 고정하고 통합 · 디버깅 범위를 줄였다.
+시스템은 `Simulation` · `Decision & Control` · `Perception` 세 계층이고, 두 PC가 DDS(Fast DDS)로 연결됩니다. 시뮬레이션 실행 계층과 판단 계층을 나눠 책임을 고정하고 통합 · 디버깅 범위를 줄였습니다.
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/41e09f03-7c30-484a-8a67-d57c9cb03bbf" width="900" alt="시스템 아키텍처"><br>
@@ -143,7 +151,7 @@ Net 도착은 `/net/current_pose`가 목표 ±2 cm 안에 들어왔을 때만 �
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/fe2cb288-9775-45a6-8745-51c71de446c9" width="560" alt="노드 구조"><br>
-  <sub>노드 구조 — control_node 가 공정을 관리하고, vision · robot 노드가 작업 결과와 요청을 주고받으며, standalone 이 실제 물리 동작을 수행한다</sub>
+  <sub>노드 구조 — control_node가 공정을 관리하고, vision · robot 노드가 작업 결과와 요청을 주고받으며, standalone이 실제 물리 동작을 수행합니다</sub>
 </p>
 
 | 패키지 | 역할 |
@@ -171,6 +179,7 @@ Net 도착은 `/net/current_pose`가 목표 ±2 cm 안에 들어왔을 때만 �
 | Topic | `/station1/cut_complete` | Robot 1 → Control | Station 1 절단 작업 완료 |
 | Topic | `/station2/complete` | Vision 2 → Control | Station 2 제거 · 재검사 완료 |
 | Topic | `/process/state` · `/process/fault` | Control → 전체 | 공정 상태 · 오류 |
+| Topic | `/sim/reset_request` · `/sim/reset_done` | Control ↔ Standalone | 다음 어망을 위한 시뮬레이션 리셋 요청 · 완료 |
 
 ### 동작 흐름
 
@@ -180,12 +189,12 @@ Net 도착은 `/net/current_pose`가 목표 ±2 cm 안에 들어왔을 때만 �
 </p>
 
 ```
-① 이송   어망이 Station 1 에 도착한다 (실제 위치가 목표 ±2 cm 안에 들어올 때까지 확인)
-② 탐지   Vision 1 이 이물질(plastic_bottle · can · buoy)을 찾고 객체별 절단점 P1 · P2 를 만든다
-③ 절단   Robot 1 이 Approach → Contact → Hold → Retreat 를 P1 · P2 에 대해 수행하고 HOME 으로 돌아간다
-④ 이송   어망이 Station 2 로 이동한다
-⑤ 제거   Vision 2 가 목표를 만들면 Robot 2 가 접근 → 흡착(응답 확인) → Joint 해제 → 이탈 → 흡착 해제 → HOME
-⑥ 재검사  로봇 완료 이후의 새 프레임으로 다시 찍어 이물질이 없으면(연속 빈 프레임) Exit 로 이송한다
+① 이송    어망이 Station 1에 도착합니다 (실제 위치가 목표 ±2 cm 안에 들어올 때까지 확인)
+② 탐지    Vision 1이 이물질(plastic_bottle · can · buoy)을 찾고 객체별 절단점 P1 · P2를 만듭니다
+③ 절단    Robot 1이 Approach → Contact → Hold → Retreat를 P1 · P2에 대해 수행하고 HOME으로 돌아갑니다
+④ 이송    어망이 Station 2로 이동합니다
+⑤ 제거    Vision 2가 목표를 만들면 Robot 2가 접근 → 흡착(응답 확인) → Joint 해제 → 이탈 → 흡착 해제 → HOME
+⑥ 재검사  로봇 완료 이후의 새 프레임으로 다시 찍어 이물질이 없으면(연속 빈 프레임) Exit로 이송합니다
 ```
 
 <details>
@@ -219,7 +228,7 @@ flowchart TD
 
 </details>
 
-공정 상태는 `WAIT_SIM → MOVING_STATION1 → WAIT_STATION1_COMPLETE → MOVING_STATION2 → WAIT_STATION2_COMPLETE → MOVING_EXIT → COMPLETED`(반복 시 `RESETTING`)이다. 상태가 맞지 않을 때 들어온 완료 메시지는 무시하므로 순서가 뒤바뀌어도 공정 순서가 바뀌지 않는다.
+공정 상태는 `WAIT_SIM → MOVING_STATION1 → WAIT_STATION1_COMPLETE → MOVING_STATION2 → WAIT_STATION2_COMPLETE → MOVING_EXIT → COMPLETED`(반복 시 `RESETTING`)입니다. 상태가 맞지 않을 때 들어온 완료 메시지는 무시하므로, 메시지 순서가 뒤바뀌어도 공정 순서는 바뀌지 않습니다.
 
 ## 🧩 트러블슈팅
 
@@ -292,7 +301,7 @@ Isaac Sim + ROS 2로 전체 공정을 실행하며 막힌 곳 7가지를 원인�
 
 ## 🤝 개발 · 협업 방식
 
-4명이 USD 월드 · 비전 · 로봇 제어 · Standalone을 나눠 브랜치(`feat/dg` · `feat/jy` · `feature/su` · `feature/su2`)에서 개발하고, 인터페이스(Topic · Action 이름)를 먼저 정해 노드별로 나눠 개발했습니다.
+2주(8/15 ~ 8/28) 동안 **ROS 2 패키지 6개 · 단위 시험 18개 · 트러블슈팅 7건**. 4명이 USD 월드 · 비전 · 로봇 제어 · Standalone을 나눠 브랜치(`feat/dg` · `feat/jy` · `feature/su` · `feature/su2`)에서 개발하고, 인터페이스(Topic · Action 이름)를 먼저 정해 노드별로 나눠 개발했습니다.
 
 <details>
 <summary>일정 · 통합 흐름</summary>
@@ -312,6 +321,9 @@ Isaac Sim + ROS 2로 전체 공정을 실행하며 막힌 곳 7가지를 원인�
 
 ## 💻 개발 환경 · 장비
 
+<details>
+<summary>OS · 미들웨어 · 시뮬레이터 · 라이브러리 · 장비 표</summary>
+
 | 항목 | 값 |
 |---|---|
 | OS · 미들웨어 | Ubuntu 24.04 · ROS 2 Jazzy · Fast DDS(`rmw_fastrtps_cpp`) |
@@ -321,10 +333,12 @@ Isaac Sim + ROS 2로 전체 공정을 실행하며 막힌 곳 7가지를 원인�
 
 | 구성 요소 | 모델 · 형식 | 역할 · ROS 연결 |
 |---|---|---|
-| Robot 1 | Doosan M0609 + Cutter TCP(Visual End-Effector) | Station 1 폐어망 절단 |
-| Robot 2 | Doosan M0609 + VG10 Suction Gripper | Station 2 폐기물 흡착 · 수거 |
+| Robot 1 | Doosan M0609 + 인두기형 커터(Isaac Sim에서 자체 제작, `CutterTCP`) | Station 1 폐어망 절단 |
+| Robot 2 | Doosan M0609 + OnRobot VG10 흡착 그리퍼(`SuctionTCP`) | Station 2 폐기물 흡착 · 수거 |
 | Camera 1 · 2 | Intel RealSense D455(시뮬레이션) · 640×640 | `/camera1/*` · `/camera2/*` RGB · Depth · CameraInfo |
 | Transport | Net rigid body + Carriage 4개 | `/net/target_pose` · `/net/current_pose` |
+
+</details>
 
 ## 🚀 설치 · 실행
 
@@ -336,7 +350,7 @@ Ubuntu 24.04 + ROS 2 Jazzy PC에서 **빌드 · 단위 시험**까지 해 볼 �
 ```bash
 git clone https://github.com/suuuhululu/isaac_ros2_waste_net_cutting2.git
 cd isaac_ros2_waste_net_cutting2
-pip install ultralytics                 # numpy<2 권장 (ROS cv_bridge 호환)
+pip install -r requirements.txt         # ultralytics · numpy<2(ROS cv_bridge 호환) · opencv-python · pytest
 cd ros2_ws && source /opt/ros/jazzy/setup.bash && colcon build && source install/setup.bash && cd ..
 python3 -m pytest ros2_ws/src/nc_vision/test/test_vision_geometry.py ros2_ws/src/nc_vision/test/test_sync_utils.py ros2_ws/src/nc_vision/test/test_image_msg_utils.py ros2_ws/src/nc_robot/test/test_motion_utils.py -q     # 18 passed
 ```
@@ -364,10 +378,13 @@ python3 -m pytest ros2_ws/src/nc_vision/test/test_vision_geometry.py ros2_ws/src
 
 | 문서 | 내용 |
 |---|---|
+| [`docs/`](docs/README.md) | 문서 지도 — 처음 읽는 순서 · 문서별 안내 |
+| [`ros2_ws/src/`](ros2_ws/src/README.md) | ROS 2 패키지 6개 — 패키지별 역할 · 노드 · 실행 파일 · 시험 |
 | [`README_INSTALL.md`](README_INSTALL.md) | 설치 · 빌드 · 시험 · 전체 실행 순서 · 월드 선택 · 연동 확인 · 문제 해결 |
 | [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) | 트러블슈팅 7가지 — 증상 · 원인 · 해결 · 결과와 상세 설명 |
 | [`sim/assets/factory/README.md`](sim/assets/factory/README.md) | 공장 배경 에셋 레이어 구성 |
 | [`docs/ASSET_MANAGEMENT.md`](docs/ASSET_MANAGEMENT.md) | 최종 월드(v4 · 공장 배경) 구성 · 에셋 포함 범위 · Git 관리 정책 |
+| [`models/netclean_yolo11n/README.md`](models/netclean_yolo11n/README.md) | YOLO11n 탐지 모델 — 학습 설정 · 성능 · 사용 방법 |
 | [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) | 외부 에셋 출처 · 라이선스 |
 
 <details>
@@ -389,13 +406,14 @@ isaac_ros2_waste_net_cutting2/
 │   ├── assets/factory/           공장 배경 레이어 · 소품 · 텍스처
 │   ├── cobot3_ws/                Robot 1 상대 참조 USD
 │   └── standalone/               netclean_standalone_v2_home_joint_fix_v2.py (실행 최종본)
-├── docs/                         트러블슈팅 · 에셋 관리 · README 이미지
+├── docs/                         문서 지도(README.md) · 트러블슈팅 · 에셋 관리 · README 이미지
 ├── README_INSTALL.md
-└── LICENSES/ · THIRD_PARTY_NOTICES.md
+├── requirements.txt              pip 의존성
+└── LICENSE · LICENSES/ · THIRD_PARTY_NOTICES.md
 ```
 
 </details>
 
 ## 라이선스
 
-[Apache License 2.0](LICENSES/Apache-2.0.txt). 외부 에셋의 출처와 라이선스는 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)를 따릅니다.
+[Apache License 2.0](LICENSE). 외부 에셋의 출처와 라이선스는 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)를 따릅니다.

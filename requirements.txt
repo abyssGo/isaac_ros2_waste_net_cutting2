@@ -1,0 +1,8 @@
+# NetClean pip 의존성 (Vision PC · 단위 시험)
+# ROS 2 쪽 패키지(rclpy · cv_bridge · message_filters · sensor_msgs 등)는 pip가 아니라
+# ROS 2 Jazzy(apt)로 설치합니다. 자세한 내용은 README_INSTALL.md를 참고하세요.
+
+ultralytics          # YOLO11 추론
+numpy<2              # numpy 2.x는 ROS cv_bridge와 충돌
+opencv-python        # 이미지 처리 · 디버그 화면
+pytest               # 단위 시험 18개
