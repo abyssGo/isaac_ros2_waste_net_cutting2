@@ -1,0 +1,40 @@
+#usda 1.0
+(
+    "NetClean factory world: decoration layers over the unchanged simulation_integration_v4.usd"
+    customLayerData = {
+        dictionary cameraSettings = {
+            dictionary Front = {
+                double3 position = (5, 0, 0)
+                double radius = 5
+            }
+            dictionary Perspective = {
+                double3 position = (10.5, -9.5, 4)
+                double3 target = (-1.5, 0.8, 1.2)
+            }
+            dictionary Right = {
+                double3 position = (0, -5, 0)
+                double radius = 5
+            }
+            dictionary Top = {
+                double3 position = (0, 0, 5)
+                double radius = 5
+            }
+            string boundCamera = "/OmniverseKit_Persp"
+        }
+        dictionary renderSettings = {
+        }
+    }
+    defaultPrim = "World"
+    endTimeCode = 1000000
+    metersPerUnit = 1
+    startTimeCode = 0
+    subLayers = [
+        @../factory/factory_station_backdrop.usda@,
+        @../factory/factory_enclosure.usda@,
+        @../factory/factory_outside_fov.usda@,
+        @./simulation_integration_v4.usd@
+    ]
+    timeCodesPerSecond = 60
+    upAxis = "Z"
+)
+

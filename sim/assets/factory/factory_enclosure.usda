@@ -1,0 +1,3096 @@
+#usda 1.0
+(
+    "NetClean factory enclosure, step 2: hidden from the cameras by the station backdrop."
+    defaultPrim = "World"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "World"
+{
+    def Xform "FactoryEnclosure"
+    {
+        double3 xformOp:translate = (0, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def "FarWall"
+        {
+            def Xform "Low_0" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_WallA_6M.usd@
+            )
+            {
+                double3 xformOp:translate = (-11.7, -9, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                over "SM_WallA_6M"
+                {
+                    over "Section0"
+                    {
+                        bool physics:collisionEnabled = 0
+                    }
+
+                    over "Section1"
+                    {
+                        bool physics:collisionEnabled = 0
+                    }
+                }
+            }
+
+            def Xform "High_0" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_WallB_6M.usd@
+            )
+            {
+                double3 xformOp:translate = (-11.5, -9, 3.1)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                over "SM_WallB_6M"
+                {
+                    bool physics:collisionEnabled = 0
+                }
+            }
+
+            def Xform "Low_1" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_WallA_6M.usd@
+            )
+            {
+                double3 xformOp:translate = (-11.7, -3, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                over "SM_WallA_6M"
+                {
+                    over "Section0"
+                    {
+                        bool physics:collisionEnabled = 0
+                    }
+
+                    over "Section1"
+                    {
+                        bool physics:collisionEnabled = 0
+                    }
+                }
+            }
+
+            def Xform "High_1" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_WallB_6M.usd@
+            )
+            {
+                double3 xformOp:translate = (-11.5, -3, 3.1)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                over "SM_WallB_6M"
+                {
+                    bool physics:collisionEnabled = 0
+                }
+            }
+
+            def Xform "Low_2" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_WallA_6M.usd@
+            )
+            {
+                double3 xformOp:translate = (-11.7, 3, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                over "SM_WallA_6M"
+                {
+                    over "Section0"
+                    {
+                        bool physics:collisionEnabled = 0
+                    }
+
+                    over "Section1"
+                    {
+                        bool physics:collisionEnabled = 0
+                    }
+                }
+            }
+
+            def Xform "High_2" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_WallB_6M.usd@
+            )
+            {
+                double3 xformOp:translate = (-11.5, 3, 3.1)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                over "SM_WallB_6M"
+                {
+                    bool physics:collisionEnabled = 0
+                }
+            }
+
+            def Xform "Low_3" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_WallA_6M.usd@
+            )
+            {
+                double3 xformOp:translate = (-11.7, 9, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                over "SM_WallA_6M"
+                {
+                    over "Section0"
+                    {
+                        bool physics:collisionEnabled = 0
+                    }
+
+                    over "Section1"
+                    {
+                        bool physics:collisionEnabled = 0
+                    }
+                }
+            }
+
+            def Xform "High_3" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_WallB_6M.usd@
+            )
+            {
+                double3 xformOp:translate = (-11.5, 9, 3.1)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                over "SM_WallB_6M"
+                {
+                    bool physics:collisionEnabled = 0
+                }
+            }
+        }
+
+        def "SideWalls"
+        {
+            def Xform "LeftLow_0" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_WallA_6M.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (0, 0, 90)
+                double3 xformOp:translate = (-2.5, -12.5, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_WallA_6M"
+                {
+                    over "Section0"
+                    {
+                        bool physics:collisionEnabled = 0
+                    }
+
+                    over "Section1"
+                    {
+                        bool physics:collisionEnabled = 0
+                    }
+                }
+            }
+
+            def Xform "LeftHigh_0" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_WallB_6M.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (0, 0, 90)
+                double3 xformOp:translate = (-2.5, -12.3, 3.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_WallB_6M"
+                {
+                    bool physics:collisionEnabled = 0
+                }
+            }
+
+            def Xform "RightLow_0" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_WallA_6M.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (0, 0, -90)
+                double3 xformOp:translate = (-2.5, 12.5, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_WallA_6M"
+                {
+                    over "Section0"
+                    {
+                        bool physics:collisionEnabled = 0
+                    }
+
+                    over "Section1"
+                    {
+                        bool physics:collisionEnabled = 0
+                    }
+                }
+            }
+
+            def Xform "RightHigh_0" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_WallB_6M.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (0, 0, -90)
+                double3 xformOp:translate = (-2.5, 12.3, 3.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_WallB_6M"
+                {
+                    bool physics:collisionEnabled = 0
+                }
+            }
+
+            def Xform "LeftLow_1" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_WallA_6M.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (0, 0, 90)
+                double3 xformOp:translate = (-8.5, -12.5, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_WallA_6M"
+                {
+                    over "Section0"
+                    {
+                        bool physics:collisionEnabled = 0
+                    }
+
+                    over "Section1"
+                    {
+                        bool physics:collisionEnabled = 0
+                    }
+                }
+            }
+
+            def Xform "LeftHigh_1" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_WallB_6M.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (0, 0, 90)
+                double3 xformOp:translate = (-8.5, -12.3, 3.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_WallB_6M"
+                {
+                    bool physics:collisionEnabled = 0
+                }
+            }
+
+            def Xform "RightLow_1" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_WallA_6M.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (0, 0, -90)
+                double3 xformOp:translate = (-8.5, 12.5, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_WallA_6M"
+                {
+                    over "Section0"
+                    {
+                        bool physics:collisionEnabled = 0
+                    }
+
+                    over "Section1"
+                    {
+                        bool physics:collisionEnabled = 0
+                    }
+                }
+            }
+
+            def Xform "RightHigh_1" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_WallB_6M.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (0, 0, -90)
+                double3 xformOp:translate = (-8.5, 12.3, 3.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_WallB_6M"
+                {
+                    bool physics:collisionEnabled = 0
+                }
+            }
+        }
+
+        def "Pillars"
+        {
+            def Xform "Left_0" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_PillarA_9M.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (0, 0, 90)
+                float3 xformOp:scale = (1, 1, 0.67777777)
+                double3 xformOp:translate = (-5.5, -12.2, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                over "SM_PillarA_9M"
+                {
+                    bool physics:collisionEnabled = 0
+                }
+            }
+
+            def Xform "Right_0" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_PillarA_9M.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (0, 0, -90)
+                float3 xformOp:scale = (1, 1, 0.67777777)
+                double3 xformOp:translate = (-5.5, 12.2, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                over "SM_PillarA_9M"
+                {
+                    bool physics:collisionEnabled = 0
+                }
+            }
+
+            def Xform "Far_0" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_PillarA_9M.usd@
+            )
+            {
+                float3 xformOp:scale = (1, 1, 0.67777777)
+                double3 xformOp:translate = (-11.4, -12, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+
+                over "SM_PillarA_9M"
+                {
+                    bool physics:collisionEnabled = 0
+                }
+            }
+
+            def Xform "Far_1" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_PillarA_9M.usd@
+            )
+            {
+                float3 xformOp:scale = (1, 1, 0.67777777)
+                double3 xformOp:translate = (-11.4, -6, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+
+                over "SM_PillarA_9M"
+                {
+                    bool physics:collisionEnabled = 0
+                }
+            }
+
+            def Xform "Far_2" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_PillarA_9M.usd@
+            )
+            {
+                float3 xformOp:scale = (1, 1, 0.67777777)
+                double3 xformOp:translate = (-11.4, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+
+                over "SM_PillarA_9M"
+                {
+                    bool physics:collisionEnabled = 0
+                }
+            }
+
+            def Xform "Far_3" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_PillarA_9M.usd@
+            )
+            {
+                float3 xformOp:scale = (1, 1, 0.67777777)
+                double3 xformOp:translate = (-11.4, 6, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+
+                over "SM_PillarA_9M"
+                {
+                    bool physics:collisionEnabled = 0
+                }
+            }
+
+            def Xform "Far_4" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_PillarA_9M.usd@
+            )
+            {
+                float3 xformOp:scale = (1, 1, 0.67777777)
+                double3 xformOp:translate = (-11.4, 12, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+
+                over "SM_PillarA_9M"
+                {
+                    bool physics:collisionEnabled = 0
+                }
+            }
+        }
+
+        def "Roof"
+        {
+            def Xform "Tile_0_0" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_CeilingA_6X6.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (180, 0, 0)
+                double3 xformOp:translate = (-8.5, -12, 6.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_CeilingA_6X6"
+                {
+                    bool physics:collisionEnabled = 0
+                    bool primvars:doNotCastShadows = 1 (
+                        interpolation = "constant"
+                    )
+                }
+            }
+
+            def Xform "Tile_0_1" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_CeilingA_6X6.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (180, 0, 0)
+                double3 xformOp:translate = (-8.5, -6, 6.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_CeilingA_6X6"
+                {
+                    bool physics:collisionEnabled = 0
+                    bool primvars:doNotCastShadows = 1 (
+                        interpolation = "constant"
+                    )
+                }
+            }
+
+            def Xform "Tile_0_2" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_CeilingA_6X6.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (180, 0, 0)
+                double3 xformOp:translate = (-8.5, 0, 6.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_CeilingA_6X6"
+                {
+                    bool physics:collisionEnabled = 0
+                    bool primvars:doNotCastShadows = 1 (
+                        interpolation = "constant"
+                    )
+                }
+            }
+
+            def Xform "Tile_0_3" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_CeilingA_6X6.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (180, 0, 0)
+                double3 xformOp:translate = (-8.5, 6, 6.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_CeilingA_6X6"
+                {
+                    bool physics:collisionEnabled = 0
+                    bool primvars:doNotCastShadows = 1 (
+                        interpolation = "constant"
+                    )
+                }
+            }
+
+            def Xform "Tile_0_4" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_CeilingA_6X6.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (180, 0, 0)
+                double3 xformOp:translate = (-8.5, 12, 6.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_CeilingA_6X6"
+                {
+                    bool physics:collisionEnabled = 0
+                    bool primvars:doNotCastShadows = 1 (
+                        interpolation = "constant"
+                    )
+                }
+            }
+
+            def Xform "Tile_1_0" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_CeilingA_6X6.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (180, 0, 0)
+                double3 xformOp:translate = (-2.5, -12, 6.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_CeilingA_6X6"
+                {
+                    bool physics:collisionEnabled = 0
+                    bool primvars:doNotCastShadows = 1 (
+                        interpolation = "constant"
+                    )
+                }
+            }
+
+            def Xform "Tile_1_1" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_CeilingA_6X6.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (180, 0, 0)
+                double3 xformOp:translate = (-2.5, -6, 6.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_CeilingA_6X6"
+                {
+                    bool physics:collisionEnabled = 0
+                    bool primvars:doNotCastShadows = 1 (
+                        interpolation = "constant"
+                    )
+                }
+            }
+
+            def Xform "Tile_1_2" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_CeilingA_6X6.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (180, 0, 0)
+                double3 xformOp:translate = (-2.5, 0, 6.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_CeilingA_6X6"
+                {
+                    bool physics:collisionEnabled = 0
+                    bool primvars:doNotCastShadows = 1 (
+                        interpolation = "constant"
+                    )
+                }
+            }
+
+            def Xform "Tile_1_3" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_CeilingA_6X6.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (180, 0, 0)
+                double3 xformOp:translate = (-2.5, 6, 6.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_CeilingA_6X6"
+                {
+                    bool physics:collisionEnabled = 0
+                    bool primvars:doNotCastShadows = 1 (
+                        interpolation = "constant"
+                    )
+                }
+            }
+
+            def Xform "Tile_1_4" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_CeilingA_6X6.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (180, 0, 0)
+                double3 xformOp:translate = (-2.5, 12, 6.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_CeilingA_6X6"
+                {
+                    bool physics:collisionEnabled = 0
+                    bool primvars:doNotCastShadows = 1 (
+                        interpolation = "constant"
+                    )
+                }
+            }
+
+            def Xform "Tile_2_0" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_CeilingA_6X6.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (180, 0, 0)
+                double3 xformOp:translate = (3.5, -12, 6.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_CeilingA_6X6"
+                {
+                    bool physics:collisionEnabled = 0
+                    bool primvars:doNotCastShadows = 1 (
+                        interpolation = "constant"
+                    )
+                }
+            }
+
+            def Xform "Tile_2_1" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_CeilingA_6X6.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (180, 0, 0)
+                double3 xformOp:translate = (3.5, -6, 6.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_CeilingA_6X6"
+                {
+                    bool physics:collisionEnabled = 0
+                    bool primvars:doNotCastShadows = 1 (
+                        interpolation = "constant"
+                    )
+                }
+            }
+
+            def Xform "Tile_2_2" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_CeilingA_6X6.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (180, 0, 0)
+                double3 xformOp:translate = (3.5, 0, 6.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_CeilingA_6X6"
+                {
+                    bool physics:collisionEnabled = 0
+                    bool primvars:doNotCastShadows = 1 (
+                        interpolation = "constant"
+                    )
+                }
+            }
+
+            def Xform "Tile_2_3" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_CeilingA_6X6.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (180, 0, 0)
+                double3 xformOp:translate = (3.5, 6, 6.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_CeilingA_6X6"
+                {
+                    bool physics:collisionEnabled = 0
+                    bool primvars:doNotCastShadows = 1 (
+                        interpolation = "constant"
+                    )
+                }
+            }
+
+            def Xform "Tile_2_4" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_CeilingA_6X6.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (180, 0, 0)
+                double3 xformOp:translate = (3.5, 12, 6.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_CeilingA_6X6"
+                {
+                    bool physics:collisionEnabled = 0
+                    bool primvars:doNotCastShadows = 1 (
+                        interpolation = "constant"
+                    )
+                }
+            }
+
+            def Xform "Tile_3_0" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_CeilingA_6X6.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (180, 0, 0)
+                double3 xformOp:translate = (9.5, -12, 6.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_CeilingA_6X6"
+                {
+                    bool physics:collisionEnabled = 0
+                    bool primvars:doNotCastShadows = 1 (
+                        interpolation = "constant"
+                    )
+                }
+            }
+
+            def Xform "Tile_3_1" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_CeilingA_6X6.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (180, 0, 0)
+                double3 xformOp:translate = (9.5, -6, 6.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_CeilingA_6X6"
+                {
+                    bool physics:collisionEnabled = 0
+                    bool primvars:doNotCastShadows = 1 (
+                        interpolation = "constant"
+                    )
+                }
+            }
+
+            def Xform "Tile_3_2" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_CeilingA_6X6.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (180, 0, 0)
+                double3 xformOp:translate = (9.5, 0, 6.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_CeilingA_6X6"
+                {
+                    bool physics:collisionEnabled = 0
+                    bool primvars:doNotCastShadows = 1 (
+                        interpolation = "constant"
+                    )
+                }
+            }
+
+            def Xform "Tile_3_3" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_CeilingA_6X6.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (180, 0, 0)
+                double3 xformOp:translate = (9.5, 6, 6.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_CeilingA_6X6"
+                {
+                    bool physics:collisionEnabled = 0
+                    bool primvars:doNotCastShadows = 1 (
+                        interpolation = "constant"
+                    )
+                }
+            }
+
+            def Xform "Tile_3_4" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_CeilingA_6X6.usd@
+            )
+            {
+                float3 xformOp:rotateXYZ = (180, 0, 0)
+                double3 xformOp:translate = (9.5, 12, 6.1)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                over "SM_CeilingA_6X6"
+                {
+                    bool physics:collisionEnabled = 0
+                    bool primvars:doNotCastShadows = 1 (
+                        interpolation = "constant"
+                    )
+                }
+            }
+        }
+
+        def "Lamps"
+        {
+            def Xform "Lamp_0_0" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_LampCeilingA_04.usd@
+            )
+            {
+                double3 xformOp:translate = (-6, -8, 7.699999999999999)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                over "SM_LampCeilingA_04"
+                {
+                    over "Section0"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+
+                    over "Section1"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+                }
+            }
+
+            def Xform "Lamp_0_1" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_LampCeilingA_04.usd@
+            )
+            {
+                double3 xformOp:translate = (-6, -4, 7.699999999999999)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                over "SM_LampCeilingA_04"
+                {
+                    over "Section0"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+
+                    over "Section1"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+                }
+            }
+
+            def Xform "Lamp_0_2" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_LampCeilingA_04.usd@
+            )
+            {
+                double3 xformOp:translate = (-6, 0, 7.699999999999999)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                over "SM_LampCeilingA_04"
+                {
+                    over "Section0"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+
+                    over "Section1"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+                }
+            }
+
+            def Xform "Lamp_0_3" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_LampCeilingA_04.usd@
+            )
+            {
+                double3 xformOp:translate = (-6, 4, 7.699999999999999)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                over "SM_LampCeilingA_04"
+                {
+                    over "Section0"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+
+                    over "Section1"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+                }
+            }
+
+            def Xform "Lamp_0_4" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_LampCeilingA_04.usd@
+            )
+            {
+                double3 xformOp:translate = (-6, 8, 7.699999999999999)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                over "SM_LampCeilingA_04"
+                {
+                    over "Section0"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+
+                    over "Section1"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+                }
+            }
+
+            def Xform "Lamp_1_0" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_LampCeilingA_04.usd@
+            )
+            {
+                double3 xformOp:translate = (0.6, -8, 7.699999999999999)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                over "SM_LampCeilingA_04"
+                {
+                    over "Section0"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+
+                    over "Section1"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+                }
+            }
+
+            def Xform "Lamp_1_1" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_LampCeilingA_04.usd@
+            )
+            {
+                double3 xformOp:translate = (0.6, -4, 7.699999999999999)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                over "SM_LampCeilingA_04"
+                {
+                    over "Section0"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+
+                    over "Section1"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+                }
+            }
+
+            def Xform "Lamp_1_2" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_LampCeilingA_04.usd@
+            )
+            {
+                double3 xformOp:translate = (0.6, 0, 7.699999999999999)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                over "SM_LampCeilingA_04"
+                {
+                    over "Section0"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+
+                    over "Section1"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+                }
+            }
+
+            def Xform "Lamp_1_3" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_LampCeilingA_04.usd@
+            )
+            {
+                double3 xformOp:translate = (0.6, 4, 7.699999999999999)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                over "SM_LampCeilingA_04"
+                {
+                    over "Section0"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+
+                    over "Section1"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+                }
+            }
+
+            def Xform "Lamp_1_4" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_LampCeilingA_04.usd@
+            )
+            {
+                double3 xformOp:translate = (0.6, 8, 7.699999999999999)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                over "SM_LampCeilingA_04"
+                {
+                    over "Section0"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+
+                    over "Section1"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+                }
+            }
+
+            def Xform "Lamp_2_0" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_LampCeilingA_04.usd@
+            )
+            {
+                double3 xformOp:translate = (6.5, -8, 7.699999999999999)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                over "SM_LampCeilingA_04"
+                {
+                    over "Section0"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+
+                    over "Section1"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+                }
+            }
+
+            def Xform "Lamp_2_1" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_LampCeilingA_04.usd@
+            )
+            {
+                double3 xformOp:translate = (6.5, -4, 7.699999999999999)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                over "SM_LampCeilingA_04"
+                {
+                    over "Section0"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+
+                    over "Section1"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+                }
+            }
+
+            def Xform "Lamp_2_2" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_LampCeilingA_04.usd@
+            )
+            {
+                double3 xformOp:translate = (6.5, 0, 7.699999999999999)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                over "SM_LampCeilingA_04"
+                {
+                    over "Section0"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+
+                    over "Section1"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+                }
+            }
+
+            def Xform "Lamp_2_3" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_LampCeilingA_04.usd@
+            )
+            {
+                double3 xformOp:translate = (6.5, 4, 7.699999999999999)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                over "SM_LampCeilingA_04"
+                {
+                    over "Section0"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+
+                    over "Section1"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+                }
+            }
+
+            def Xform "Lamp_2_4" (
+                prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_LampCeilingA_04.usd@
+            )
+            {
+                double3 xformOp:translate = (6.5, 8, 7.699999999999999)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                over "SM_LampCeilingA_04"
+                {
+                    over "Section0"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+
+                    over "Section1"
+                    {
+                        bool physics:collisionEnabled = 0
+                        bool primvars:doNotCastShadows = 1 (
+                            interpolation = "constant"
+                        )
+                    }
+                }
+            }
+        }
+
+        def "Racks"
+        {
+            def Xform "Rack_0"
+            {
+                float3 xformOp:rotateXYZ = (0, 0, 90)
+                double3 xformOp:translate = (-10.5, -8.5, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                def Xform "Frame_0" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackFrame_03.usd@
+                )
+                {
+                    double3 xformOp:translate = (-2, 0, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackFrame_03"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Frame_1" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackFrame_03.usd@
+                )
+                {
+                    double3 xformOp:translate = (2, 0, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackFrame_03"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Shelf_0" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackShelf_01.usd@
+                )
+                {
+                    double3 xformOp:translate = (0, 0, 0.35)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackShelf_01"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section2"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Shelf_1" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackShelf_01.usd@
+                )
+                {
+                    double3 xformOp:translate = (0, 0, 1.5)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackShelf_01"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section2"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Shelf_2" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackShelf_01.usd@
+                )
+                {
+                    double3 xformOp:translate = (0, 0, 2.65)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackShelf_01"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section2"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Load_0" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackPile_06.usd@
+                )
+                {
+                    double3 xformOp:translate = (0, -0.1, 0.38)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackPile_06"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Load_1" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackPile_06.usd@
+                )
+                {
+                    float3 xformOp:rotateXYZ = (0, 0, 180)
+                    double3 xformOp:translate = (0, -0.1, 1.53)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    over "SM_RackPile_06"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+            }
+
+            def Xform "Rack_1"
+            {
+                float3 xformOp:rotateXYZ = (0, 0, 90)
+                double3 xformOp:translate = (-10.5, -4, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                def Xform "Frame_0" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackFrame_03.usd@
+                )
+                {
+                    double3 xformOp:translate = (-2, 0, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackFrame_03"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Frame_1" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackFrame_03.usd@
+                )
+                {
+                    double3 xformOp:translate = (2, 0, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackFrame_03"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Shelf_0" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackShelf_01.usd@
+                )
+                {
+                    double3 xformOp:translate = (0, 0, 0.35)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackShelf_01"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section2"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Shelf_1" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackShelf_01.usd@
+                )
+                {
+                    double3 xformOp:translate = (0, 0, 1.5)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackShelf_01"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section2"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Shelf_2" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackShelf_01.usd@
+                )
+                {
+                    double3 xformOp:translate = (0, 0, 2.65)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackShelf_01"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section2"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Load_0" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackPile_06.usd@
+                )
+                {
+                    double3 xformOp:translate = (0, -0.1, 0.38)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackPile_06"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Load_1" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackPile_06.usd@
+                )
+                {
+                    float3 xformOp:rotateXYZ = (0, 0, 180)
+                    double3 xformOp:translate = (0, -0.1, 1.53)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    over "SM_RackPile_06"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+            }
+
+            def Xform "Rack_2"
+            {
+                float3 xformOp:rotateXYZ = (0, 0, 90)
+                double3 xformOp:translate = (-10.5, 4, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                def Xform "Frame_0" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackFrame_03.usd@
+                )
+                {
+                    double3 xformOp:translate = (-2, 0, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackFrame_03"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Frame_1" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackFrame_03.usd@
+                )
+                {
+                    double3 xformOp:translate = (2, 0, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackFrame_03"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Shelf_0" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackShelf_01.usd@
+                )
+                {
+                    double3 xformOp:translate = (0, 0, 0.35)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackShelf_01"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section2"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Shelf_1" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackShelf_01.usd@
+                )
+                {
+                    double3 xformOp:translate = (0, 0, 1.5)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackShelf_01"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section2"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Shelf_2" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackShelf_01.usd@
+                )
+                {
+                    double3 xformOp:translate = (0, 0, 2.65)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackShelf_01"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section2"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Load_0" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackPile_06.usd@
+                )
+                {
+                    double3 xformOp:translate = (0, -0.1, 0.38)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackPile_06"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Load_1" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackPile_06.usd@
+                )
+                {
+                    float3 xformOp:rotateXYZ = (0, 0, 180)
+                    double3 xformOp:translate = (0, -0.1, 1.53)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    over "SM_RackPile_06"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+            }
+
+            def Xform "Rack_3"
+            {
+                float3 xformOp:rotateXYZ = (0, 0, 90)
+                double3 xformOp:translate = (-10.5, 8.5, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                def Xform "Frame_0" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackFrame_03.usd@
+                )
+                {
+                    double3 xformOp:translate = (-2, 0, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackFrame_03"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Frame_1" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackFrame_03.usd@
+                )
+                {
+                    double3 xformOp:translate = (2, 0, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackFrame_03"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Shelf_0" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackShelf_01.usd@
+                )
+                {
+                    double3 xformOp:translate = (0, 0, 0.35)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackShelf_01"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section2"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Shelf_1" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackShelf_01.usd@
+                )
+                {
+                    double3 xformOp:translate = (0, 0, 1.5)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackShelf_01"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section2"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Shelf_2" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackShelf_01.usd@
+                )
+                {
+                    double3 xformOp:translate = (0, 0, 2.65)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackShelf_01"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section2"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Load_0" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackPile_06.usd@
+                )
+                {
+                    double3 xformOp:translate = (0, -0.1, 0.38)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_RackPile_06"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+
+                def Xform "Load_1" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_RackPile_06.usd@
+                )
+                {
+                    float3 xformOp:rotateXYZ = (0, 0, 180)
+                    double3 xformOp:translate = (0, -0.1, 1.53)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    over "SM_RackPile_06"
+                    {
+                        over "Section0"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "Section1"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+                    }
+                }
+            }
+        }
+
+        def "NetStorage"
+        {
+            def "Pallet_0"
+            {
+                def Xform "Pallet" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_PaletteA_01.usd@
+                )
+                {
+                    double3 xformOp:translate = (-3.6, -9.6, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_PaletteA_01"
+                    {
+                        bool physics:collisionEnabled = 0
+                    }
+                }
+
+                def Xform "Net_0" (
+                    prepend references = @../project1/Collected_collected_net/Collected_net/SubUSDs/net_collected.usd@
+                )
+                {
+                    float3 xformOp:rotateXYZ = (0, 90, -8.808362)
+                    float3 xformOp:scale = (1, 0.95, 0.85)
+                    double3 xformOp:translate = (-3.6, -9.6, 0.24)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                    over "carriage_TL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_TR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "net_green"
+                    {
+                        bool physics:rigidBodyEnabled = 0
+
+                        over "net_green"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "SphericalJoint" (
+                            active = false
+                        )
+                        {
+                        }
+                    }
+                }
+
+                def Xform "Net_1" (
+                    prepend references = @../project1/Collected_collected_net/Collected_net/SubUSDs/net_collected.usd@
+                )
+                {
+                    float3 xformOp:rotateXYZ = (0, 90, -17.45754)
+                    float3 xformOp:scale = (1, 0.95, 0.85)
+                    double3 xformOp:translate = (-3.6, -9.6, 0.29)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                    over "carriage_TL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_TR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "net_green"
+                    {
+                        bool physics:rigidBodyEnabled = 0
+
+                        over "net_green"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "SphericalJoint" (
+                            active = false
+                        )
+                        {
+                        }
+                    }
+                }
+
+                def Xform "Net_2" (
+                    prepend references = @../project1/Collected_collected_net/Collected_net/SubUSDs/net_collected.usd@
+                )
+                {
+                    float3 xformOp:rotateXYZ = (0, 90, 7.546724)
+                    float3 xformOp:scale = (1, 0.95, 0.85)
+                    double3 xformOp:translate = (-3.6, -9.6, 0.33999999999999997)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                    over "carriage_TL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_TR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "net_green"
+                    {
+                        bool physics:rigidBodyEnabled = 0
+
+                        over "net_green"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "SphericalJoint" (
+                            active = false
+                        )
+                        {
+                        }
+                    }
+                }
+            }
+
+            def "Pallet_1"
+            {
+                def Xform "Pallet" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_PaletteA_01.usd@
+                )
+                {
+                    double3 xformOp:translate = (-3.6, -8.2, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_PaletteA_01"
+                    {
+                        bool physics:collisionEnabled = 0
+                    }
+                }
+
+                def Xform "Net_0" (
+                    prepend references = @../project1/Collected_collected_net/Collected_net/SubUSDs/net_collected.usd@
+                )
+                {
+                    float3 xformOp:rotateXYZ = (0, 90, -21.378185)
+                    float3 xformOp:scale = (1, 0.95, 0.85)
+                    double3 xformOp:translate = (-3.6, -8.2, 0.24)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                    over "carriage_TL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_TR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "net_green"
+                    {
+                        bool physics:rigidBodyEnabled = 0
+
+                        over "net_green"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "SphericalJoint" (
+                            active = false
+                        )
+                        {
+                        }
+                    }
+                }
+
+                def Xform "Net_1" (
+                    prepend references = @../project1/Collected_collected_net/Collected_net/SubUSDs/net_collected.usd@
+                )
+                {
+                    float3 xformOp:rotateXYZ = (0, 90, 1.7941002)
+                    float3 xformOp:scale = (1, 0.95, 0.85)
+                    double3 xformOp:translate = (-3.6, -8.2, 0.29)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                    over "carriage_TL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_TR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "net_green"
+                    {
+                        bool physics:rigidBodyEnabled = 0
+
+                        over "net_green"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "SphericalJoint" (
+                            active = false
+                        )
+                        {
+                        }
+                    }
+                }
+
+                def Xform "Net_2" (
+                    prepend references = @../project1/Collected_collected_net/Collected_net/SubUSDs/net_collected.usd@
+                )
+                {
+                    float3 xformOp:rotateXYZ = (0, 90, -6.715554)
+                    float3 xformOp:scale = (1, 0.95, 0.85)
+                    double3 xformOp:translate = (-3.6, -8.2, 0.33999999999999997)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                    over "carriage_TL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_TR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "net_green"
+                    {
+                        bool physics:rigidBodyEnabled = 0
+
+                        over "net_green"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "SphericalJoint" (
+                            active = false
+                        )
+                        {
+                        }
+                    }
+                }
+
+                def Xform "Net_3" (
+                    prepend references = @../project1/Collected_collected_net/Collected_net/SubUSDs/net_collected.usd@
+                )
+                {
+                    float3 xformOp:rotateXYZ = (0, 90, -22.100054)
+                    float3 xformOp:scale = (1, 0.95, 0.85)
+                    double3 xformOp:translate = (-3.6, -8.2, 0.39)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                    over "carriage_TL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_TR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "net_green"
+                    {
+                        bool physics:rigidBodyEnabled = 0
+
+                        over "net_green"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "SphericalJoint" (
+                            active = false
+                        )
+                        {
+                        }
+                    }
+                }
+            }
+
+            def "Pallet_2"
+            {
+                def Xform "Pallet" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_PaletteA_01.usd@
+                )
+                {
+                    double3 xformOp:translate = (-5.2, -9.6, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_PaletteA_01"
+                    {
+                        bool physics:collisionEnabled = 0
+                    }
+                }
+
+                def Xform "Net_0" (
+                    prepend references = @../project1/Collected_collected_net/Collected_net/SubUSDs/net_collected.usd@
+                )
+                {
+                    float3 xformOp:rotateXYZ = (0, 90, 0.37178665)
+                    float3 xformOp:scale = (1, 0.95, 0.85)
+                    double3 xformOp:translate = (-5.2, -9.6, 0.24)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                    over "carriage_TL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_TR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "net_green"
+                    {
+                        bool physics:rigidBodyEnabled = 0
+
+                        over "net_green"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "SphericalJoint" (
+                            active = false
+                        )
+                        {
+                        }
+                    }
+                }
+
+                def Xform "Net_1" (
+                    prepend references = @../project1/Collected_collected_net/Collected_net/SubUSDs/net_collected.usd@
+                )
+                {
+                    float3 xformOp:rotateXYZ = (0, 90, -23.125217)
+                    float3 xformOp:scale = (1, 0.95, 0.85)
+                    double3 xformOp:translate = (-5.2, -9.6, 0.29)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                    over "carriage_TL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_TR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "net_green"
+                    {
+                        bool physics:rigidBodyEnabled = 0
+
+                        over "net_green"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "SphericalJoint" (
+                            active = false
+                        )
+                        {
+                        }
+                    }
+                }
+
+                def Xform "Net_2" (
+                    prepend references = @../project1/Collected_collected_net/Collected_net/SubUSDs/net_collected.usd@
+                )
+                {
+                    float3 xformOp:rotateXYZ = (0, 90, -3.317716)
+                    float3 xformOp:scale = (1, 0.95, 0.85)
+                    double3 xformOp:translate = (-5.2, -9.6, 0.33999999999999997)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                    over "carriage_TL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_TR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "net_green"
+                    {
+                        bool physics:rigidBodyEnabled = 0
+
+                        over "net_green"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "SphericalJoint" (
+                            active = false
+                        )
+                        {
+                        }
+                    }
+                }
+
+                def Xform "Net_3" (
+                    prepend references = @../project1/Collected_collected_net/Collected_net/SubUSDs/net_collected.usd@
+                )
+                {
+                    float3 xformOp:rotateXYZ = (0, 90, -21.507229)
+                    float3 xformOp:scale = (1, 0.95, 0.85)
+                    double3 xformOp:translate = (-5.2, -9.6, 0.39)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                    over "carriage_TL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_TR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "net_green"
+                    {
+                        bool physics:rigidBodyEnabled = 0
+
+                        over "net_green"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "SphericalJoint" (
+                            active = false
+                        )
+                        {
+                        }
+                    }
+                }
+
+                def Xform "Net_4" (
+                    prepend references = @../project1/Collected_collected_net/Collected_net/SubUSDs/net_collected.usd@
+                )
+                {
+                    float3 xformOp:rotateXYZ = (0, 90, -20.46435)
+                    float3 xformOp:scale = (1, 0.95, 0.85)
+                    double3 xformOp:translate = (-5.2, -9.6, 0.44)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                    over "carriage_TL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_TR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "net_green"
+                    {
+                        bool physics:rigidBodyEnabled = 0
+
+                        over "net_green"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "SphericalJoint" (
+                            active = false
+                        )
+                        {
+                        }
+                    }
+                }
+            }
+
+            def "Pallet_3"
+            {
+                def Xform "Pallet" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_PaletteA_01.usd@
+                )
+                {
+                    double3 xformOp:translate = (-5.2, -8.2, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_PaletteA_01"
+                    {
+                        bool physics:collisionEnabled = 0
+                    }
+                }
+
+                def Xform "Net_0" (
+                    prepend references = @../project1/Collected_collected_net/Collected_net/SubUSDs/net_collected.usd@
+                )
+                {
+                    float3 xformOp:rotateXYZ = (0, 90, -3.7740405)
+                    float3 xformOp:scale = (1, 0.95, 0.85)
+                    double3 xformOp:translate = (-5.2, -8.2, 0.24)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                    over "carriage_TL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_TR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "net_green"
+                    {
+                        bool physics:rigidBodyEnabled = 0
+
+                        over "net_green"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "SphericalJoint" (
+                            active = false
+                        )
+                        {
+                        }
+                    }
+                }
+
+                def Xform "Net_1" (
+                    prepend references = @../project1/Collected_collected_net/Collected_net/SubUSDs/net_collected.usd@
+                )
+                {
+                    float3 xformOp:rotateXYZ = (0, 90, 16.342606)
+                    float3 xformOp:scale = (1, 0.95, 0.85)
+                    double3 xformOp:translate = (-5.2, -8.2, 0.29)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                    over "carriage_TL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_TR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "net_green"
+                    {
+                        bool physics:rigidBodyEnabled = 0
+
+                        over "net_green"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "SphericalJoint" (
+                            active = false
+                        )
+                        {
+                        }
+                    }
+                }
+
+                def Xform "Net_2" (
+                    prepend references = @../project1/Collected_collected_net/Collected_net/SubUSDs/net_collected.usd@
+                )
+                {
+                    float3 xformOp:rotateXYZ = (0, 90, -18.809902)
+                    float3 xformOp:scale = (1, 0.95, 0.85)
+                    double3 xformOp:translate = (-5.2, -8.2, 0.33999999999999997)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                    over "carriage_TL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_TR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "net_green"
+                    {
+                        bool physics:rigidBodyEnabled = 0
+
+                        over "net_green"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "SphericalJoint" (
+                            active = false
+                        )
+                        {
+                        }
+                    }
+                }
+            }
+
+            def "Pallet_4"
+            {
+                def Xform "Pallet" (
+                    prepend references = @./isaac/Environments/Simple_Warehouse/Props/SM_PaletteA_01.usd@
+                )
+                {
+                    double3 xformOp:translate = (-3.6, -6.8, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                    over "SM_PaletteA_01"
+                    {
+                        bool physics:collisionEnabled = 0
+                    }
+                }
+
+                def Xform "Net_0" (
+                    prepend references = @../project1/Collected_collected_net/Collected_net/SubUSDs/net_collected.usd@
+                )
+                {
+                    float3 xformOp:rotateXYZ = (0, 90, -13.838052)
+                    float3 xformOp:scale = (1, 0.95, 0.85)
+                    double3 xformOp:translate = (-3.6, -6.8, 0.24)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                    over "carriage_TL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_TR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "net_green"
+                    {
+                        bool physics:rigidBodyEnabled = 0
+
+                        over "net_green"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "SphericalJoint" (
+                            active = false
+                        )
+                        {
+                        }
+                    }
+                }
+
+                def Xform "Net_1" (
+                    prepend references = @../project1/Collected_collected_net/Collected_net/SubUSDs/net_collected.usd@
+                )
+                {
+                    float3 xformOp:rotateXYZ = (0, 90, 6.371661)
+                    float3 xformOp:scale = (1, 0.95, 0.85)
+                    double3 xformOp:translate = (-3.6, -6.8, 0.29)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                    over "carriage_TL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_TR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "net_green"
+                    {
+                        bool physics:rigidBodyEnabled = 0
+
+                        over "net_green"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "SphericalJoint" (
+                            active = false
+                        )
+                        {
+                        }
+                    }
+                }
+
+                def Xform "Net_2" (
+                    prepend references = @../project1/Collected_collected_net/Collected_net/SubUSDs/net_collected.usd@
+                )
+                {
+                    float3 xformOp:rotateXYZ = (0, 90, 22.385447)
+                    float3 xformOp:scale = (1, 0.95, 0.85)
+                    double3 xformOp:translate = (-3.6, -6.8, 0.33999999999999997)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                    over "carriage_TL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_TR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "net_green"
+                    {
+                        bool physics:rigidBodyEnabled = 0
+
+                        over "net_green"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "SphericalJoint" (
+                            active = false
+                        )
+                        {
+                        }
+                    }
+                }
+
+                def Xform "Net_3" (
+                    prepend references = @../project1/Collected_collected_net/Collected_net/SubUSDs/net_collected.usd@
+                )
+                {
+                    float3 xformOp:rotateXYZ = (0, 90, 3.8551474)
+                    float3 xformOp:scale = (1, 0.95, 0.85)
+                    double3 xformOp:translate = (-3.6, -6.8, 0.39)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+                    over "carriage_TL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_TR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BL" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "carriage_BR" (
+                        active = false
+                    )
+                    {
+                    }
+
+                    over "net_green"
+                    {
+                        bool physics:rigidBodyEnabled = 0
+
+                        over "net_green"
+                        {
+                            bool physics:collisionEnabled = 0
+                        }
+
+                        over "SphericalJoint" (
+                            active = false
+                        )
+                        {
+                        }
+                    }
+                }
+            }
+
+            def Xform "Sign"
+            {
+                double3 xformOp:translate = (-2.7, -8.2, 1.6)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                def Mesh "Face" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    float3[] extent = [(0.012, -0.5, -0.25), (0.012, 0.5, 0.25)]
+                    int[] faceVertexCounts = [4]
+                    int[] faceVertexIndices = [0, 1, 2, 3]
+                    rel material:binding = </World/FactoryLooks/sign_net_storage>
+                    normal3f[] normals = [(1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0)] (
+                        interpolation = "vertex"
+                    )
+                    point3f[] points = [(0.012, -0.5, -0.25), (0.012, 0.5, -0.25), (0.012, 0.5, 0.25), (0.012, -0.5, 0.25)]
+                    texCoord2f[] primvars:st = [(0, 0), (1, 0), (1, 1), (0, 1)] (
+                        interpolation = "vertex"
+                    )
+                }
+
+                def Xform "Backing"
+                {
+                    float3 xformOp:scale = (0.02, 1.04, 0.54)
+                    double3 xformOp:translate = (0, 0, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+
+                    def Cube "Box" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                    )
+                    {
+                        rel material:binding = </World/FactoryLooks/SignBacking>
+                        double size = 1
+                    }
+                }
+
+                def Xform "Post"
+                {
+                    float3 xformOp:scale = (0.05, 0.05, 1.35)
+                    double3 xformOp:translate = (-0.03, 0, -0.925)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+
+                    def Cube "Box" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                    )
+                    {
+                        rel material:binding = </World/FactoryLooks/SignBacking>
+                        double size = 1
+                    }
+                }
+
+                def Xform "Foot"
+                {
+                    float3 xformOp:scale = (0.4, 0.4, 0.03)
+                    double3 xformOp:translate = (-0.03, 0, -1.5850000000000002)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+
+                    def Cube "Box" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                    )
+                    {
+                        rel material:binding = </World/FactoryLooks/SignBacking>
+                        double size = 1
+                    }
+                }
+            }
+        }
+
+        def "Signs"
+        {
+            def Xform "LineFar"
+            {
+                double3 xformOp:translate = (-11.48, 0, 4.6)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                def Mesh "Face" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    float3[] extent = [(0.012, -2.4, -0.6), (0.012, 2.4, 0.6)]
+                    int[] faceVertexCounts = [4]
+                    int[] faceVertexIndices = [0, 1, 2, 3]
+                    rel material:binding = </World/FactoryLooks/sign_line>
+                    normal3f[] normals = [(1, 0, 0), (1, 0, 0), (1, 0, 0), (1, 0, 0)] (
+                        interpolation = "vertex"
+                    )
+                    point3f[] points = [(0.012, -2.4, -0.6), (0.012, 2.4, -0.6), (0.012, 2.4, 0.6), (0.012, -2.4, 0.6)]
+                    texCoord2f[] primvars:st = [(0, 0), (1, 0), (1, 1), (0, 1)] (
+                        interpolation = "vertex"
+                    )
+                }
+
+                def Xform "Backing"
+                {
+                    float3 xformOp:scale = (0.02, 4.84, 1.24)
+                    double3 xformOp:translate = (0, 0, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+
+                    def Cube "Box" (
+                        prepend apiSchemas = ["MaterialBindingAPI"]
+                    )
+                    {
+                        rel material:binding = </World/FactoryLooks/SignBacking>
+                        double size = 1
+                    }
+                }
+            }
+        }
+    }
+
+    over "wall_plane" (
+        active = false
+    )
+    {
+    }
+
+    def "FactoryLooks"
+    {
+        def Material "sign_net_storage"
+        {
+            token outputs:surface.connect = </World/FactoryLooks/sign_net_storage/Shader.outputs:surface>
+
+            def Shader "Shader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor.connect = </World/FactoryLooks/sign_net_storage/Texture.outputs:rgb>
+                float inputs:metallic = 0
+                float inputs:roughness = 0.55
+                token outputs:surface
+            }
+
+            def Shader "st"
+            {
+                uniform token info:id = "UsdPrimvarReader_float2"
+                token inputs:varname = "st"
+                float2 outputs:result
+            }
+
+            def Shader "Texture"
+            {
+                uniform token info:id = "UsdUVTexture"
+                asset inputs:file = @./textures/sign_net_storage.png@
+                token inputs:sourceColorSpace = "sRGB"
+                float2 inputs:st.connect = </World/FactoryLooks/sign_net_storage/st.outputs:result>
+                token inputs:wrapS = "clamp"
+                token inputs:wrapT = "clamp"
+                color3f outputs:rgb
+            }
+        }
+
+        def Material "SignBacking"
+        {
+            token outputs:surface.connect = </World/FactoryLooks/SignBacking/Shader.outputs:surface>
+
+            def Shader "Shader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.08, 0.08, 0.09)
+                float inputs:metallic = 0.6
+                float inputs:roughness = 0.5
+                token outputs:surface
+            }
+        }
+
+        def Material "sign_line"
+        {
+            token outputs:surface.connect = </World/FactoryLooks/sign_line/Shader.outputs:surface>
+
+            def Shader "Shader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor.connect = </World/FactoryLooks/sign_line/Texture.outputs:rgb>
+                float inputs:metallic = 0
+                float inputs:roughness = 0.55
+                token outputs:surface
+            }
+
+            def Shader "st"
+            {
+                uniform token info:id = "UsdPrimvarReader_float2"
+                token inputs:varname = "st"
+                float2 outputs:result
+            }
+
+            def Shader "Texture"
+            {
+                uniform token info:id = "UsdUVTexture"
+                asset inputs:file = @./textures/sign_line.png@
+                token inputs:sourceColorSpace = "sRGB"
+                float2 inputs:st.connect = </World/FactoryLooks/sign_line/st.outputs:result>
+                token inputs:wrapS = "clamp"
+                token inputs:wrapT = "clamp"
+                color3f outputs:rgb
+            }
+        }
+    }
+
+    def "FactoryCams"
+    {
+        def Camera "Overview"
+        {
+            float2 clippingRange = (0.05, 1000)
+            float focalLength = 18
+            matrix4d xformOp:transform = ( (0.6513119723890114, 0.7588100649192365, 1.387778780781446e-17, 0), (-0.13229401133156515, 0.1135523597262601, 0.9846848004140218, -0), (0.7471887373271491, -0.6413369995391364, 0.1743440387096681, 0), (10.5, -9.5, 4, 1) )
+            uniform token[] xformOpOrder = ["xformOp:transform"]
+        }
+
+        def Camera "RobotSide"
+        {
+            float2 clippingRange = (0.05, 1000)
+            float focalLength = 18
+            matrix4d xformOp:transform = ( (0.8361437835000376, -0.5485103219760246, 1.387778780781445e-17, 0), (0.1284155588819474, 0.19575542512491984, 0.9722084435815185, 0), (-0.5332663664167085, -0.8129060463669339, 0.23411694135367692, 0), (-1.2000000000000002, -11, 4.4, 1) )
+            uniform token[] xformOpOrder = ["xformOp:transform"]
+        }
+
+        def Camera "Line"
+        {
+            float2 clippingRange = (0.05, 1000)
+            float focalLength = 18
+            matrix4d xformOp:transform = ( (0, 1, -0, 0), (-0.17031428521880665, 0, 0.985389793051667, -0), (0.985389793051667, -0, 0.17031428521880665, 0), (6.499999999999999, 0, 2.6, 1) )
+            uniform token[] xformOpOrder = ["xformOp:transform"]
+        }
+    }
+}
+

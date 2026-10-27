@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import traceback
 from typing import Dict, List, Sequence, Tuple
 
 import cv2
@@ -28,6 +29,12 @@ from ultralytics import YOLO
 from nc_interfaces.action import ExecuteCut
 from nc_interfaces.msg import CutTarget
 
+from .image_msg_utils import bgr8_to_imgmsg
+from .sync_utils import (
+    StampRewindGuard,
+    clear_synchronizer_queues,
+    stamp_to_ns,
+)
 from .depth_utils import (
     intersect_pixel_with_world_plane,
     median_depth_m,
@@ -54,6 +61,9 @@ class Vision1Node(Node):
         self.goal_in_flight = False
         self.detection_attempt = 0
         self.frame_processed = False
+        # 도착 직후 첫 프레임 시각 + arrival_settle_sec 이후 프레임만 사용한다(어망 정지 대기).
+        self.awaiting_arrival_settle = False
+        self.minimum_frame_stamp_ns = -1
         self.pending_targets: List[CutTarget] | None = None
         self.pending_stamp = None
         self.debug_detections: List[dict] = []
@@ -107,6 +117,10 @@ class Vision1Node(Node):
             self.depth_topic,
             qos_profile=camera_qos,
         )
+        # Isaac Sim reset 으로 시간이 되감기면 이전 Cycle 프레임이 큐에 남아
+        # 새 프레임이 즉시 버려진다. 동기화기보다 먼저 등록해 큐를 비운다.
+        self.stamp_rewind_guard = StampRewindGuard(tolerance_sec=1.0)
+        self.rgb_subscriber.registerCallback(self._on_rgb_stamp)
         self.synchronizer = message_filters.ApproximateTimeSynchronizer(
             [self.rgb_subscriber, self.depth_subscriber],
             queue_size=self.sync_queue_size,
@@ -208,6 +222,7 @@ class Vision1Node(Node):
         self.declare_parameter("validation_map50_95", -1.0)
         self.declare_parameter("sync_queue_size", 10)
         self.declare_parameter("sync_slop_sec", 0.10)
+        self.declare_parameter("arrival_settle_sec", 1.0)
 
         self.declare_parameter("use_roi", False)
         self.declare_parameter("roi_x0", 0)
@@ -273,6 +288,7 @@ class Vision1Node(Node):
         self.validation_map50_95 = float(value("validation_map50_95"))
         self.sync_queue_size = int(value("sync_queue_size"))
         self.sync_slop_sec = float(value("sync_slop_sec"))
+        self.arrival_settle_sec = float(value("arrival_settle_sec"))
 
         self.use_roi = bool(value("use_roi"))
         self.roi_x0 = int(value("roi_x0"))
@@ -312,6 +328,8 @@ class Vision1Node(Node):
             )
         if self.net_plane_depth_camera_m <= 0.0:
             raise ValueError("net_plane_depth_camera_m must be positive")
+        if self.arrival_settle_sec < 0.0:
+            raise ValueError("arrival_settle_sec must not be negative")
         if self.cut_axis not in {"auto", "horizontal", "vertical"}:
             raise ValueError("cut_axis must be auto, horizontal or vertical")
         if len(set(self.expected_classes)) != len(self.expected_classes):
@@ -348,14 +366,30 @@ class Vision1Node(Node):
             )
         self.camera_info = message
 
+    def _on_rgb_stamp(self, message: Image) -> None:
+        if not self.stamp_rewind_guard.update(stamp_to_ns(message.header.stamp)):
+            return
+        removed = clear_synchronizer_queues(self.synchronizer)
+        self.get_logger().warning(
+            f"Camera time rewound (simulation reset); cleared {removed} "
+            "stale RGB-D frames from the synchronizer"
+        )
+
     def _on_station_arrived(self, message: Bool) -> None:
         if message.data and not self.station_arrived:
+            removed = clear_synchronizer_queues(self.synchronizer)
+            if removed:
+                self.get_logger().info(
+                    f"Station1 arrival: cleared {removed} queued RGB-D frames"
+                )
             self.station_arrived = True
             self.cycle_finished = False
             self.processing = False
             self.goal_in_flight = False
             self.detection_attempt = 0
             self.frame_processed = False
+            self.awaiting_arrival_settle = True
+            self.minimum_frame_stamp_ns = -1
             self.pending_targets = None
             self.pending_stamp = None
             self.debug_detections = []
@@ -373,6 +407,7 @@ class Vision1Node(Node):
             self.station_arrived = False
             self.cycle_finished = False
             self.frame_processed = False
+            self.awaiting_arrival_settle = False
             self.pending_targets = None
             self.pending_stamp = None
             self.debug_detections = []
@@ -403,6 +438,17 @@ class Vision1Node(Node):
                 throttle_duration_sec=2.0,
             )
             return
+        frame_stamp_ns = stamp_to_ns(rgb_message.header.stamp)
+        if self.awaiting_arrival_settle:
+            # 도착 판정(±2 cm) 직후 어망은 아직 움직이는 중이다. 카메라 프레임 시각 기준으로
+            # (리셋 후 /clock 과 카메라 시각이 달라도 맞도록) 정착 시간을 기다린다.
+            self.awaiting_arrival_settle = False
+            self.minimum_frame_stamp_ns = frame_stamp_ns + int(
+                self.arrival_settle_sec * 1_000_000_000
+            )
+            return
+        if frame_stamp_ns <= self.minimum_frame_stamp_ns:
+            return
         self.processing = True
         self.detection_attempt += 1
         try:
@@ -416,9 +462,15 @@ class Vision1Node(Node):
         except Exception as error:  # noqa: BLE001
             self._set_debug_state(
                 phase="ERROR",
-                message=f"ERROR - unexpected Vision1 failure: {error}",
+                message=(
+                    f"ERROR - unexpected Vision1 failure: "
+                    f"{type(error).__name__}: {error}"
+                ),
             )
-            self.get_logger().error(f"Unexpected Vision1 error: {error}")
+            self.get_logger().error(
+                f"Unexpected Vision1 error: {type(error).__name__}: {error}\n"
+                + traceback.format_exc()
+            )
         finally:
             self.processing = False
 
@@ -1087,9 +1139,12 @@ class Vision1Node(Node):
         )
 
     def _publish_debug(self, image: np.ndarray, source_message: Image) -> None:
-        debug_message = self.bridge.cv2_to_imgmsg(image, encoding="bgr8")
-        debug_message.header = source_message.header
-        debug_message.header.frame_id = self.camera_frame
+        # cv_bridge-free conversion: see image_msg_utils for the OpenCV 5 issue.
+        debug_message = bgr8_to_imgmsg(
+            image,
+            header=source_message.header,
+            frame_id=self.camera_frame,
+        )
         self.debug_publisher.publish(debug_message)
 
     def _publish_popup_source(
@@ -1098,9 +1153,11 @@ class Vision1Node(Node):
         source_message: Image,
     ) -> None:
         """Publish the exact clean frame used to compute popup detections."""
-        popup_message = self.bridge.cv2_to_imgmsg(image, encoding="bgr8")
-        popup_message.header = source_message.header
-        popup_message.header.frame_id = self.camera_frame
+        popup_message = bgr8_to_imgmsg(
+            image,
+            header=source_message.header,
+            frame_id=self.camera_frame,
+        )
         self.last_popup_image_message = popup_message
         self.popup_image_publisher.publish(popup_message)
 

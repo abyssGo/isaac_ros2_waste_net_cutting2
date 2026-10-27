@@ -35,7 +35,6 @@ from dataclasses import dataclass
 from enum import Enum, auto
 import math
 import threading
-import time
 from typing import Optional, Sequence
 
 import numpy as np
@@ -48,6 +47,7 @@ from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from std_msgs.msg import Bool, String
 
+from nc_robot.motion_utils import sleep_sim_time
 from nc_robot.transform_utils import (
     add_tool_offset,
     make_pose_stamped,
@@ -174,6 +174,15 @@ PREGRASP_DISTANCE_M = 0.12
 RETREAT_DISTANCE_M = 0.15
 PREGRASP_HOLD_SEC = 0.50
 CONTACT_HOLD_SEC = 0.25
+# 대기(HOLD)는 시뮬 시간 기준이다(sleep_sim_time). 벽시계 time.sleep 이면 시뮬이 느린
+# PC·무거운 장면에서 같은 대기 동안 흐르는 시뮬 시간이 달라져 결과가 바뀌었다.
+
+# CONTACT 는 비전 표면점에서 어망 법선(로봇 쪽)으로 이만큼 앞에 멈춘다.
+# 표면점은 물체 중앙의 깊이라, 페트병은 가장 튀어나온 면(AABB 앞면)이 표면점보다
+# 8.5 mm 앞에 있다. 표면점까지 밀고 들어가면 흡착컵이 병에 먼저 닿고, 강성이 낮은
+# 1축(160)이 밀려 TCP 가 옆으로 4-7 cm 미끄러져 흡착 판정(3 cm)에서 거부됐다
+# (docs/TROUBLESHOOTING.md #7). 흡착 판정은 AABB 거리라 1.2 cm 앞에서도 통과한다.
+CONTACT_STANDOFF_M = 0.012
 
 MOTION_TIMEOUT_SEC = 70.0
 SUCTION_TIMEOUT_SEC = 5.0
@@ -189,7 +198,7 @@ DIRECT_SUCTION_HOLD_SEC = 1.0
 # Vision2 Camera->World 결과는 plastic_bottle에서 실제 표면보다 World Y가
 # 약 -0.285m 벗어나 로봇 작업공간 밖 목표를 만들었으므로, 로봇 동작에는
 # 클래스별 실제 USD 표면점을 사용한다. 비전은 클래스 식별/처리 순서만 담당한다.
-USE_MEASURED_USD_CONTACT_POINTS = True
+USE_MEASURED_USD_CONTACT_POINTS = False
 MEASURED_USD_CONTACT_POINT_WORLD = {
     'plastic_bottle': (-0.6008, 1.6931, 1.0968),
     'buoy': (-0.5761, 2.1358, 1.2432),
@@ -517,10 +526,11 @@ class Robot2Node(Node):
                     target.position.z,
                 ))
 
-            contact = add_tool_offset(
+            surface = add_tool_offset(
                 position_world,
                 GRASP_POINT_OFFSET_WORLD,
             )
+            contact = offset_point(surface, self._net_normal, CONTACT_STANDOFF_M)
             contact_array = np.array(
                 [contact.x, contact.y, contact.z],
                 dtype=float,
@@ -538,7 +548,8 @@ class Robot2Node(Node):
                 f'vision=({target.position.x:.4f}, {target.position.y:.4f}, '
                 f'{target.position.z:.4f}), world=({position_world.x:.4f}, '
                 f'{position_world.y:.4f}, {position_world.z:.4f}), '
-                f'contact=({contact.x:.4f}, {contact.y:.4f}, {contact.z:.4f})'
+                f'contact=({contact.x:.4f}, {contact.y:.4f}, {contact.z:.4f}) '
+                f'(standoff {CONTACT_STANDOFF_M * 1000:.0f} mm)'
             )
 
             prepared.append(PreparedTarget(
@@ -633,7 +644,7 @@ class Robot2Node(Node):
         self._feedback_for_target(
             goal_handle, target, current_target, total_targets, 'PREGRASP_HOLD'
         )
-        time.sleep(PREGRASP_HOLD_SEC)
+        self._hold(PREGRASP_HOLD_SEC, 'PREGRASP_HOLD')
 
         self.state = Robot2State.CONTACT
         self._feedback_for_target(
@@ -658,7 +669,7 @@ class Robot2Node(Node):
         self._feedback_for_target(
             goal_handle, target, current_target, total_targets, 'CONTACT_HOLD'
         )
-        time.sleep(CONTACT_HOLD_SEC)
+        self._hold(CONTACT_HOLD_SEC, 'CONTACT_HOLD')
 
         self.state = Robot2State.SUCTION_ON
         self._feedback_for_target(
@@ -733,7 +744,7 @@ class Robot2Node(Node):
             return False
 
         # 화면에서 쓰레기가 흡착기에 붙은 상태를 확인할 수 있도록 잠시 유지한다.
-        time.sleep(DIRECT_SUCTION_HOLD_SEC)
+        self._hold(DIRECT_SUCTION_HOLD_SEC, 'DIRECT_SUCTION_HOLD')
 
         self.state = Robot2State.SUCTION_OFF
         self._feedback_for_target(
@@ -744,6 +755,13 @@ class Robot2Node(Node):
             'DIRECT_DROP',
         )
         return self._send_suction_and_wait(False)
+
+    def _hold(self, seconds: float, label: str) -> None:
+        """Wait ``seconds`` of simulation time (/clock)."""
+        if not sleep_sim_time(self.get_clock(), seconds):
+            self.get_logger().warning(
+                f'{label}: 시뮬 시간이 흐르지 않아 벽시계 제한 시간 후 진행합니다.'
+            )
 
     def _recover_after_attachment_failure(
         self,

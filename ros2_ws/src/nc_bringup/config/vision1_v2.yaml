@@ -24,6 +24,8 @@ vision1_node:
     popup_image_topic: /vision1/debug/source_image
     sync_queue_size: 10
     sync_slop_sec: 0.10
+    # Station1 도착 후 첫 프레임 시각 + 이 시간 이후 프레임만 탐지에 사용(어망 정지 대기).
+    arrival_settle_sec: 1.0
 
     # Offline YOLO validation metrics. Keep -1.0 until measured.
     validation_precision: -1.0

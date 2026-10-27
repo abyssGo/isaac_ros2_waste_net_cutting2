@@ -58,6 +58,10 @@ class ControlNode(Node):
         self.declare_parameter("station2_work_timeout_sec", 240.0)
         self.declare_parameter("reset_timeout_sec", 45.0)
 
+        # Station 도착 신호는 one-shot Bool이라 Vision 노드가 늦게 discovery되면
+        # 유실된다. 대기 상태 동안 주기적으로 재발행해 유실/재시작에 견디게 한다.
+        self.declare_parameter("station_signal_republish_sec", 1.0)
+
         self.station1_pose = self._pose_from_params("station1")
         self.station2_pose = self._pose_from_params("station2")
         self.exit_pose = self._pose_from_params("exit")
@@ -148,11 +152,15 @@ class ControlNode(Node):
         self._state_started_wall = time.monotonic()
         self._state_timeout_sec: Optional[float] = None
         self._sim_ready = False
+        self._last_station_signal_wall = -math.inf
 
         # use_sim_time=True여도 /clock 정지를 감지하도록 steady wall clock timer 사용.
         self._watchdog_clock = Clock(clock_type=ClockType.STEADY_TIME)
         self.create_timer(0.25, self._watchdog, clock=self._watchdog_clock)
         self._publish_process_state()
+        # 이전 실행에서 남은 Vision 노드의 armed 상태를 해제한다.
+        self._publish_bool(self.station1_arrived_pub, False)
+        self._publish_bool(self.station2_arrived_pub, False)
         self.get_logger().info("어망 분리 공정을 시작합니다!")
         self.get_logger().info("Isaac Sim 준비를 기다리는 중...")
 
@@ -196,7 +204,7 @@ class ControlNode(Node):
                     float(self.get_parameter("station1_work_timeout_sec").value),
                 )
                 self.get_logger().info("어망이 1번 공정 구역에 도착했습니다!")
-                self._publish_bool(self.station1_arrived_pub, True)
+                self._publish_station_signal(self.station1_arrived_pub, True)
             return
 
         if self.state is ProcessState.MOVING_STATION2:
@@ -206,7 +214,7 @@ class ControlNode(Node):
                     float(self.get_parameter("station2_work_timeout_sec").value),
                 )
                 self.get_logger().info("어망이 2번 공정 구역에 도착했습니다!")
-                self._publish_bool(self.station2_arrived_pub, True)
+                self._publish_station_signal(self.station2_arrived_pub, True)
             return
 
         if self.state is ProcessState.MOVING_EXIT:
@@ -219,6 +227,8 @@ class ControlNode(Node):
         if not msg.data:
             self._enter_error("Robot1이 절단 실패를 보고했습니다.")
             return
+        # Vision1이 다음 Cycle에 다시 armed 될 수 있도록 도착 신호를 해제한다.
+        self._publish_station_signal(self.station1_arrived_pub, False)
         self.get_logger().info("어망이 2번 공정 구역으로 진입하는 중...")
         self._command_net(self.station2_pose, ProcessState.MOVING_STATION2)
 
@@ -228,6 +238,7 @@ class ControlNode(Node):
         if not msg.data:
             self._enter_error("Vision2가 2번 공정 실패를 보고했습니다.")
             return
+        self._publish_station_signal(self.station2_arrived_pub, False)
         self.get_logger().info(
             "어망 분리 공정이 종료되었습니다! EXIT로 이동합니다."
         )
@@ -285,6 +296,7 @@ class ControlNode(Node):
         return max(minimum, expected * scale + margin)
 
     def _watchdog(self) -> None:
+        self._republish_station_signal()
         if self._state_timeout_sec is None:
             return
         if self.state in {ProcessState.ERROR, ProcessState.COMPLETED}:
@@ -311,6 +323,8 @@ class ControlNode(Node):
         if self.state is ProcessState.ERROR:
             return
         self._transition(ProcessState.ERROR, None)
+        self._publish_bool(self.station1_arrived_pub, False)
+        self._publish_bool(self.station2_arrived_pub, False)
         self.get_logger().error(message)
         fault = String()
         fault.data = message
@@ -320,6 +334,28 @@ class ControlNode(Node):
         msg = String()
         msg.data = f"{self.state.name}:cycle={self.cycle_count}"
         self.process_state_pub.publish(msg)
+
+    def _publish_station_signal(self, publisher, value: bool) -> None:
+        self._publish_bool(publisher, value)
+        self._last_station_signal_wall = time.monotonic()
+
+    def _republish_station_signal(self) -> None:
+        """대기 중인 Station 도착 신호를 주기적으로 다시 보낸다.
+
+        Vision 노드는 중복 True를 무시하므로 재발행은 안전하며, Vision 노드가
+        늦게 뜨거나 첫 메시지를 놓친 경우에도 공정이 멈추지 않는다.
+        """
+        if self.state is ProcessState.WAIT_STATION1_COMPLETE:
+            publisher = self.station1_arrived_pub
+        elif self.state is ProcessState.WAIT_STATION2_COMPLETE:
+            publisher = self.station2_arrived_pub
+        else:
+            return
+        period = float(self.get_parameter("station_signal_republish_sec").value)
+        if period <= 0.0:
+            return
+        if time.monotonic() - self._last_station_signal_wall >= period:
+            self._publish_station_signal(publisher, True)
 
     @staticmethod
     def _publish_bool(publisher, value: bool) -> None:
